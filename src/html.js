@@ -332,10 +332,5 @@ export const render = (template, target) => template.render(target);
 export const r = (...args) => render(html(...args));
 
 
-//@TODO make sub containers stop nodes in order to avoid their rerender (in case of components)
-//@TODO implement stop node attribute (e.g. <div ${stopNode}></div>)
 //@TODO think about collecting new nodes to append into fragment and appending the whole fragment later
-//@TODO handle undefined values when set attributes
-//@TODO maybe store templateId as string?
 //@TODO maybe converting special nodes to comment and then replacing it is not good idea?
-//@TODO handle variables in tag names (e.g. html`<${myTag}/>`)
