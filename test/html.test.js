@@ -395,6 +395,63 @@ describe('transitions', () => {
     expect(constructorSpy).toHaveBeenCalledTimes(1);
     expect(setterSpy).toHaveBeenCalledTimes(3);
   });
+
+  it('doesnt go deeper if component is also container itself', () => {
+
+    const constructorSpy = jest.fn();
+    const constructorASpy = jest.fn();
+    const setterSpy = jest.fn();
+    const setterASpy = jest.fn();
+
+    customElements.define('my-test-component-b', class extends HTMLElement {
+      constructor(){
+        super();
+        constructorSpy();
+      }
+      set value(value){
+        setterSpy(value);
+        render(html`
+          <my-test-component-c value=${value + ' ok'}></my-test-component>
+        `, this);
+      }
+    });
+
+    customElements.define('my-test-component-c', class extends HTMLElement {
+      constructor(){
+        super();
+        constructorASpy();
+      }
+      set value(value){
+        setterASpy(value);
+      }
+    });
+
+    const tplF = (scope) => html`
+      <my-test-component-b value=${scope}></my-test-component>
+    `;
+
+    const snapshot1 = `<my-test-component-b><my-test-component-c>
+        </my-test-component-c></my-test-component-b>`;
+
+    const container = document.createElement('div');
+
+    render(tplF('value1'), container);
+    expect(container.innerHTML).toBe(snapshot1);
+    expect(constructorSpy).toHaveBeenCalledTimes(1);
+    expect(setterSpy).toHaveBeenCalledTimes(1);
+
+    expect(constructorASpy).toHaveBeenCalledTimes(1);
+    expect(setterASpy).toHaveBeenCalledTimes(1);
+
+    constructorSpy.mockReset();
+    constructorASpy.mockReset();
+    setterSpy.mockReset();
+    setterASpy.mockReset();
+
+    render(tplF('value2'), container);
+    expect(constructorASpy).not.toHaveBeenCalled();
+    expect(setterASpy).toHaveBeenCalledTimes(1);
+  });
 });
 
 
