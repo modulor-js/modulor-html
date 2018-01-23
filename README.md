@@ -102,7 +102,7 @@ more complex example:
 ```js
 const template = (scope) => html`
   ${scope.promiseArray.then(arr => arr.map(val => html`
-    <span>${scope.promiseValue}</span>
+    <span>${val}</span>
   `))}
 `;
 
