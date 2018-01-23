@@ -10,7 +10,9 @@
     "test": "jest",
     "test:watch": "jest --watch --no-cache",
     "build": "babel src --out-dir build",
-    "build:watch": "npm run build -- --watch"
+    "build:watch": "npm run build -- --watch",
+    "benchmark": "jest test/benchmark.js --transformIgnorePatterns=[]",
+    "benchmark:watch": "npm run benchmark -- --watch"
   },
   "repository": {
     "type": "git",
@@ -34,7 +36,6 @@
   },
   "jest": {
     "testURL": "http://localhost",
-    "transformIgnorePatterns": [],
     "transform": {
       "^.+\\.js$": "babel-jest"
     }

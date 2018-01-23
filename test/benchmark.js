@@ -6,8 +6,6 @@ describe('benchmark', () => {
 
   const getContainer = () => document.createElement('div');
 
-  const TIMES = 100;
-
   const setupDataHyper = [{
     name: 'toFragmentHyper',
     fn: (scope) => hyperHTML(document.createDocumentFragment())`
@@ -56,35 +54,50 @@ describe('benchmark', () => {
 
   describe('modulor-html', () => {
     setupData.forEach(item => {
-      it(`${item.name} time: ${bench(item.fn, TIMES).timeS} sec`, () => expect(true).toBe(true));
+      const result = bench(item.fn);
+      it(`${item.name}: ${result.hz} ops/sec`, () => expect(true).toBe(true));
     });
   });
 
   describe('hyper-html', () => {
     setupDataHyper.forEach(item => {
-      it(`${item.name} time: ${bench(item.fn, TIMES).timeS} sec`, () => expect(true).toBe(true));
+      const result = bench(item.fn);
+      it(`${item.name}: ${result.hz} ops/sec`, () => expect(true).toBe(true));
     });
   });
 
   describe('lit-html', () => {
     setupDataLitHtml.forEach(item => {
-      it(`${item.name} time: ${bench(item.fn, TIMES).timeS} sec`, () => expect(true).toBe(true));
+      const result = bench(item.fn);
+      it(`${item.name}: ${result.hz} ops/sec`, () => expect(true).toBe(true));
     });
   });
 
 });
 
-function bench(fn = () => {}, times = 0){
-  const startTime = +(new Date());
+function bench(fn, times){
+    let hz;
+    let period;
+    let totalTime;
+    let startTime = new Date;
+    let runs = 0;
+    do {
+      fn();
+      runs++;
+      totalTime = new Date - startTime;
+    } while (totalTime < 1000);
 
-  for(let i = 0; i < times; i++){
-    fn(i);
+    // Convert milliseconds to seconds.
+    //totalTime /= 1000;
+
+    // period → how long each operation takes
+    period = totalTime / runs;
+
+    // hz → the number of operations per second.
+    hz = 1 / period;
+
+    // This can be shortened to:
+    hz = (runs * 1000) / totalTime;
+
+    return { totalTime, period, hz };
   }
-
-  const duration = +(new Date()) - startTime;
-
-  return {
-    time: duration,
-    timeS: duration / 1000
-  };
-}
