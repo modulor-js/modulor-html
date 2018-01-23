@@ -1,7 +1,7 @@
 import 'document-register-element';
 //import 'custom-elements-jest';
 
-import { html, render, r, Template } from '../src/html';
+import { html, render, r, stopNode, Template } from '../src/html';
 import { NodesRange } from '../src/range';
 
 const template = (scope) => r`
@@ -394,6 +394,107 @@ describe('transitions', () => {
     expect(container.innerHTML).toBe(snapshot2);
     expect(constructorSpy).toHaveBeenCalledTimes(1);
     expect(setterSpy).toHaveBeenCalledTimes(3);
+  });
+
+  it('stopNode handling', () => {
+
+    const container = document.createElement('div');
+
+    const tpl = html`
+      <div id="my-element" ${stopNode}>
+        <span></span>
+      </div>
+    `;
+
+    const snapshot1 = `<div id="my-element">
+        <span></span>
+      </div>
+    `;
+
+    render(tpl, container);
+
+    expect(container.innerHTML).toBe(snapshot1);
+
+    const $testElement = document.createElement('div');
+    $testElement.setAttribute('foo', 'bar');
+    container.querySelector('#my-element').appendChild($testElement);
+
+    const snapshot2 = `<div id="my-element">
+        <span></span>
+      ${$testElement.outerHTML}</div>
+    `;
+
+    render(tpl, container);
+
+    expect(container.innerHTML).toBe(snapshot2);
+
+    //expect(constructorSpy).toHaveBeenCalledTimes(2);
+    //expect(setterSpy).toHaveBeenCalledTimes(2);
+
+    //constructorSpy.mockReset();
+    //setterSpy.mockReset();
+    //render(tplF(['value1', 'value2', 'value3']), container);
+    //expect(container.innerHTML).toBe(snapshot2);
+    //expect(constructorSpy).toHaveBeenCalledTimes(1);
+    //expect(setterSpy).toHaveBeenCalledTimes(3);
+  });
+
+
+  it('doesnt go deeper if component is also container itself', () => {
+
+    const constructorSpy = jest.fn();
+    const constructorASpy = jest.fn();
+    const setterSpy = jest.fn();
+    const setterASpy = jest.fn();
+
+    customElements.define('my-test-component-b', class extends HTMLElement {
+      constructor(){
+        super();
+        constructorSpy();
+      }
+      set value(value){
+        setterSpy(value);
+        render(html`
+          <my-test-component-c value=${value + ' ok'}></my-test-component>
+        `, this);
+      }
+    });
+
+    customElements.define('my-test-component-c', class extends HTMLElement {
+      constructor(){
+        super();
+        constructorASpy();
+      }
+      set value(value){
+        setterASpy(value);
+      }
+    });
+
+    const tplF = (scope) => html`
+      <my-test-component-b value=${scope}></my-test-component>
+    `;
+
+    const snapshot1 = `<my-test-component-b><my-test-component-c>
+        </my-test-component-c></my-test-component-b>`;
+
+    const container = document.createElement('div');
+
+    render(tplF('value1'), container);
+    expect(container.innerHTML).toBe(snapshot1);
+    expect(constructorSpy).toHaveBeenCalledTimes(1);
+    expect(setterSpy).toHaveBeenCalledTimes(1);
+
+    expect(constructorASpy).toHaveBeenCalledTimes(1);
+    expect(setterASpy).toHaveBeenCalledTimes(1);
+
+    constructorSpy.mockReset();
+    constructorASpy.mockReset();
+    setterSpy.mockReset();
+    setterASpy.mockReset();
+
+    render(tplF('value2'), container);
+    expect(constructorASpy).not.toHaveBeenCalled();
+    expect(setterASpy).toHaveBeenCalledTimes(1);
   });
 });
 

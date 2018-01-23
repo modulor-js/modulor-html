@@ -64,6 +64,7 @@ function getChunkType(chunk){
   return 'text';
 }
 
+export const stopNode = `modulor_stop_node_${+(new Date())}`;
 
 export function Template(options){
   Object.assign(this, options);
@@ -138,6 +139,10 @@ Template.prototype.copyAttributes = function(target, source, dataMap = this.data
     const preparedName = this.replaceTokens(name);
     const preparedValue = new RegExp(`^${this.getTokenRegExp()}$`).test(value) ? dataMap[value] : this.replaceTokens(value);
     if(preparedName === ''){ return; }
+    if(preparedName === stopNode){
+      target.nodeStopper = stopNode;
+      return;
+    }
     newAttrs.push(preparedName);
     if(value !== '' && preparedName in target){
       target[preparedName] = preparedValue;
@@ -281,8 +286,8 @@ Template.prototype.loop = function($source, $target, debug){
 
     //same node
     if(same($sourceElement, $targetElement)){
+      ($targetElement.nodeStopper !== stopNode) && this.loop($sourceElement, $targetElement);
       this.copyAttributes($targetElement, $sourceElement);
-      this.loop($sourceElement, $targetElement);
       continue;
     }
   }
@@ -290,6 +295,7 @@ Template.prototype.loop = function($source, $target, debug){
 };
 
 Template.prototype.render = function(target = document.createDocumentFragment()){
+  target.nodeStopper = stopNode;
   return this.loop(this.container, target);
 };
 
