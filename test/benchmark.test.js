@@ -1,6 +1,6 @@
 import { html, render, r, Template } from '../src/html';
 import hyperHTML from 'hyperhtml';
-
+import {html as litHtml, render as litRender} from 'lit-html';
 
 describe('benchmark', () => {
 
@@ -18,6 +18,18 @@ describe('benchmark', () => {
     fn: (scope) => hyperHTML(getContainer())`
       <div></div>
     `
+  }];
+
+  const setupDataLitHtml = [{
+    name: 'toFragmentLit',
+    fn: (scope) => litRender(litHtml`
+      <div></div>
+    `, document.createDocumentFragment())
+  }, {
+    name: 'toContainerLit',
+    fn: (scope) => litRender(litHtml`
+      <div></div>
+    `, getContainer())
   }];
 
   const setupData = [{
@@ -50,6 +62,12 @@ describe('benchmark', () => {
 
   describe('hyper-html', () => {
     setupDataHyper.forEach(item => {
+      it(`${item.name} time: ${bench(item.fn, TIMES).timeS} sec`, () => expect(true).toBe(true));
+    });
+  });
+
+  describe('lit-html', () => {
+    setupDataLitHtml.forEach(item => {
       it(`${item.name} time: ${bench(item.fn, TIMES).timeS} sec`, () => expect(true).toBe(true));
     });
   });
