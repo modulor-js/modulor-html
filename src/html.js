@@ -139,6 +139,10 @@ Template.prototype.copyAttributes = function(target, source, dataMap = this.data
     const preparedName = this.replaceTokens(name);
     const preparedValue = new RegExp(`^${this.getTokenRegExp()}$`).test(value) ? dataMap[value] : this.replaceTokens(value);
     if(preparedName === ''){ return; }
+    if(preparedName === stopNode){
+      target.nodeStopper = stopNode;
+      return;
+    }
     newAttrs.push(preparedName);
     if(value !== '' && preparedName in target){
       target[preparedName] = preparedValue;

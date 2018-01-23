@@ -1,7 +1,7 @@
 import 'document-register-element';
 //import 'custom-elements-jest';
 
-import { html, render, r, Template } from '../src/html';
+import { html, render, r, stopNode, Template } from '../src/html';
 import { NodesRange } from '../src/range';
 
 const template = (scope) => r`
@@ -395,6 +395,50 @@ describe('transitions', () => {
     expect(constructorSpy).toHaveBeenCalledTimes(1);
     expect(setterSpy).toHaveBeenCalledTimes(3);
   });
+
+  it('stopNode handling', () => {
+
+    const container = document.createElement('div');
+
+    const tpl = html`
+      <div id="my-element" ${stopNode}>
+        <span></span>
+      </div>
+    `;
+
+    const snapshot1 = `<div id="my-element">
+        <span></span>
+      </div>
+    `;
+
+    render(tpl, container);
+
+    expect(container.innerHTML).toBe(snapshot1);
+
+    const $testElement = document.createElement('div');
+    $testElement.setAttribute('foo', 'bar');
+    container.querySelector('#my-element').appendChild($testElement);
+
+    const snapshot2 = `<div id="my-element">
+        <span></span>
+      ${$testElement.outerHTML}</div>
+    `;
+
+    render(tpl, container);
+
+    expect(container.innerHTML).toBe(snapshot2);
+
+    //expect(constructorSpy).toHaveBeenCalledTimes(2);
+    //expect(setterSpy).toHaveBeenCalledTimes(2);
+
+    //constructorSpy.mockReset();
+    //setterSpy.mockReset();
+    //render(tplF(['value1', 'value2', 'value3']), container);
+    //expect(container.innerHTML).toBe(snapshot2);
+    //expect(constructorSpy).toHaveBeenCalledTimes(1);
+    //expect(setterSpy).toHaveBeenCalledTimes(3);
+  });
+
 
   it('doesnt go deeper if component is also container itself', () => {
 
