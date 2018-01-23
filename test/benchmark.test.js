@@ -1,8 +1,24 @@
 import { html, render, r, Template } from '../src/html';
+import hyperHTML from 'hyperhtml';
+
 
 describe('benchmark', () => {
 
-  const container = document.createElement('div');
+  const getContainer = () => document.createElement('div');
+
+  const TIMES = 100;
+
+  const setupDataHyper = [{
+    name: 'toFragmentHyper',
+    fn: (scope) => hyperHTML(document.createDocumentFragment())`
+      <div></div>
+    `
+  }, {
+    name: 'toContainerHyper',
+    fn: (scope) => hyperHTML(getContainer())`
+      <div></div>
+    `
+  }];
 
   const setupData = [{
     name: 'toFragment',
@@ -18,17 +34,26 @@ describe('benchmark', () => {
     name: 'toContainer',
     fn: (scope) => render(html`
       <div></div>
-    `, container)
+    `, getContainer())
   }, {
     name: 'toContainerSetArg',
     fn: (scope) => render(html`
       <div attr=${scope}></div>
-    `, container)
+    `, getContainer())
   }];
 
-  setupData.forEach(item => {
-    it(`${item.name} time: ${bench(item.fn, 100).timeS} sec`, () => expect(true).toBe(true));
+  describe('modulor-html', () => {
+    setupData.forEach(item => {
+      it(`${item.name} time: ${bench(item.fn, TIMES).timeS} sec`, () => expect(true).toBe(true));
+    });
   });
+
+  describe('hyper-html', () => {
+    setupDataHyper.forEach(item => {
+      it(`${item.name} time: ${bench(item.fn, TIMES).timeS} sec`, () => expect(true).toBe(true));
+    });
+  });
+
 });
 
 function bench(fn = () => {}, times = 0){

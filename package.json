@@ -28,6 +28,7 @@
     "babel-preset-es2015": "^6.24.1",
     "custom-elements-jest": "github:nogizhopaboroda/custom-elements",
     "document-register-element": "^1.7.0",
+    "hyperhtml": "^2.5.0",
     "jest": "^22.1.4"
   },
   "jest": {
