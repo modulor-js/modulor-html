@@ -169,7 +169,7 @@ const template = (scope) => html`
 render(template({ prop: 'foo', attr: 'bar' }), document.body);
 
 //logs:
-//created
+//constructor
 //attribute attr set to: bar
 //prop set to: 'foo'
 //connected
