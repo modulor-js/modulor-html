@@ -1,5 +1,5 @@
 {
-  "name": "modulor-html",
+  "name": "@modulor-js/html",
   "version": "1.0.0",
   "description": "Template engine based on tagged template literals",
   "main": "index.js",
