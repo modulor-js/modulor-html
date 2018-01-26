@@ -65,9 +65,16 @@ function getChunkType(chunk){
 }
 
 export const stopNode = `modulor_stop_node_${+(new Date())}`;
+const DEFAULT_PREFIX  = `{modulor_html_chunk_${+new Date()}:`;
+const DEFAULT_POSTFIX = '}';
+const DEFAULT_PARSER = new DOMParser();
 
 export function Template(options){
-  Object.assign(this, options);
+  this.PREFIX = options.PREFIX || DEFAULT_PREFIX;
+  this.POSTFIX = options.POSTFIX || DEFAULT_POSTFIX;
+
+  this.parser = options.parser || DEFAULT_PARSER;
+
   this.replaceChunkRegex = new RegExp(this.getTokenRegExp(), 'ig');
   this.matchChunkRegex = new RegExp(`^${this.getTokenRegExp(true)}$`);
   return this;
@@ -301,8 +308,6 @@ Template.prototype.render = function(target = document.createDocumentFragment())
   return this.loop(this.container, target);
 };
 
-Template.prototype.parser = new DOMParser();
-
 Template.prototype.generateContainer = function(markup){
   return this.parser.parseFromString(markup, "text/html").body;
 };
@@ -329,9 +334,6 @@ Template.prototype.getTokenRegExp = function(groupMatches){
   const indexRegex = `${groupMatches ? '(' : ''}\\d+${groupMatches ? ')' : ''}`;
   return `(${regExpEscape(this.PREFIX)}${indexRegex}${regExpEscape(this.POSTFIX)})`;
 };
-
-Template.prototype.PREFIX  = `{modulor_html_chunk_${+new Date()}:`;
-Template.prototype.POSTFIX = '}';
 
 
 export const html = (...args) => (new Template({})).parse(...args);
