@@ -1,3 +1,5 @@
+import { bench } from '../benchmark';
+
 import { html, render, r, Template } from '../src/html';
 import hyperHTML from 'hyperhtml';
 import {html as litHtml, render as litRender} from 'lit-html';
@@ -75,29 +77,3 @@ describe('benchmark', () => {
 
 });
 
-function bench(fn, times){
-    let hz;
-    let period;
-    let totalTime;
-    let startTime = new Date;
-    let runs = 0;
-    do {
-      fn();
-      runs++;
-      totalTime = new Date - startTime;
-    } while (totalTime < 1000);
-
-    // Convert milliseconds to seconds.
-    //totalTime /= 1000;
-
-    // period → how long each operation takes
-    period = totalTime / runs;
-
-    // hz → the number of operations per second.
-    hz = 1 / period;
-
-    // This can be shortened to:
-    hz = (runs * 1000) / totalTime;
-
-    return { totalTime, period, hz };
-  }
