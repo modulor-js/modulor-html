@@ -318,9 +318,9 @@ Template.prototype.loop = function ($source, $target, debug) {
             break;
           case NODE_TYPES.ELEMENT_NODE:
             var newChild = document.createElement($sourceElement.tagName.toLowerCase());
-            domFn(newChild);
 
             _this3.loop($sourceElement, newChild);
+            domFn(newChild);
 
             //set attributes after whole subtree has build,
             //because node content might be needed before setter being executed
