@@ -11,7 +11,7 @@
     "test:watch": "jest --watch --no-cache",
     "build": "babel src --out-dir build",
     "build:watch": "npm run build -- --watch",
-    "benchmark": "jest test/benchmark.js --transformIgnorePatterns=[]",
+    "benchmark": "jest benchmark/simple.benchmark.js --transformIgnorePatterns=[]",
     "benchmark:watch": "npm run benchmark -- --watch"
   },
   "repository": {

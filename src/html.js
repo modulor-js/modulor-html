@@ -65,9 +65,18 @@ function getChunkType(chunk){
 }
 
 export const stopNode = `modulor_stop_node_${+(new Date())}`;
+const DEFAULT_PREFIX  = `{modulor_html_chunk_${+new Date()}:`;
+const DEFAULT_POSTFIX = '}';
+const DEFAULT_PARSER = new DOMParser();
 
 export function Template(options){
-  Object.assign(this, options);
+  this.PREFIX = options.PREFIX || DEFAULT_PREFIX;
+  this.POSTFIX = options.POSTFIX || DEFAULT_POSTFIX;
+
+  this.parser = options.parser || DEFAULT_PARSER;
+
+  this.replaceChunkRegex = new RegExp(this.getTokenRegExp(), 'ig');
+  this.matchChunkRegex = new RegExp(`^${this.getTokenRegExp(true)}$`);
   return this;
 };
 
@@ -91,7 +100,7 @@ Template.prototype.processTextNodeChunks = function(chunks, dataMap = this.dataM
     if(!`${chunk}`.length){
       return acc;
     }
-    const match = chunk.match(new RegExp(`^${this.getTokenRegExp(true)}$`));
+    const match = chunk.match(this.matchChunkRegex);
     const value = match ? dataMap[chunk] : chunk;
     if(typeof value === 'undefined'){ return acc; }
     const chunkType = getChunkType(value);
@@ -137,7 +146,7 @@ Template.prototype.copyAttributes = function(target, source, dataMap = this.data
   for(let i = 0; i < attrs.length; i++){
     const { name, value } = attrs[i];
     const preparedName = this.replaceTokens(name);
-    const preparedValue = new RegExp(`^${this.getTokenRegExp()}$`).test(value) ? dataMap[value] : this.replaceTokens(value);
+    const preparedValue = this.matchChunkRegex.test(value) ? dataMap[value] : this.replaceTokens(value);
     if(preparedName === ''){ return; }
     if(preparedName === stopNode){
       target.nodeStopper = stopNode;
@@ -213,7 +222,7 @@ Template.prototype.loop = function($source, $target, debug){
       switch($sourceElement.nodeType){
         case NODE_TYPES.TEXT_NODE:
           const content = $sourceElement.textContent;
-          const chunks = content.split(new RegExp(this.getTokenRegExp(), 'ig'));
+          const chunks = content.split(this.replaceChunkRegex);
 
           if(chunks.length === 1){
             domFn(document.createTextNode($sourceElement.textContent));
@@ -299,8 +308,6 @@ Template.prototype.render = function(target = document.createDocumentFragment())
   return this.loop(this.container, target);
 };
 
-Template.prototype.parser = new DOMParser();
-
 Template.prototype.generateContainer = function(markup){
   return this.parser.parseFromString(markup, "text/html").body;
 };
@@ -318,7 +325,7 @@ Template.prototype.generateTokenName = function(index){
 };
 
 Template.prototype.replaceTokens = function(text, dataMap = this.dataMap){
-  return text.replace(new RegExp(this.getTokenRegExp(), 'ig'), (token, index) => {
+  return text.replace(this.replaceChunkRegex, (token, index) => {
     return dataMap[token];
   });
 };
@@ -327,9 +334,6 @@ Template.prototype.getTokenRegExp = function(groupMatches){
   const indexRegex = `${groupMatches ? '(' : ''}\\d+${groupMatches ? ')' : ''}`;
   return `(${regExpEscape(this.PREFIX)}${indexRegex}${regExpEscape(this.POSTFIX)})`;
 };
-
-Template.prototype.PREFIX  = `{modulor_html_chunk_${+new Date()}:`;
-Template.prototype.POSTFIX = '}';
 
 
 export const html = (...args) => (new Template({})).parse(...args);

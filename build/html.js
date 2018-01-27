@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.r = exports.render = exports.html = undefined;
+exports.r = exports.render = exports.html = exports.stopNode = undefined;
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
@@ -77,8 +77,19 @@ function getChunkType(chunk) {
   return 'text';
 }
 
+var stopNode = exports.stopNode = 'modulor_stop_node_' + +new Date();
+var DEFAULT_PREFIX = '{modulor_html_chunk_' + +new Date() + ':';
+var DEFAULT_POSTFIX = '}';
+var DEFAULT_PARSER = new DOMParser();
+
 function Template(options) {
-  Object.assign(this, options);
+  this.PREFIX = options.PREFIX || DEFAULT_PREFIX;
+  this.POSTFIX = options.POSTFIX || DEFAULT_POSTFIX;
+
+  this.parser = options.parser || DEFAULT_PARSER;
+
+  this.replaceChunkRegex = new RegExp(this.getTokenRegExp(), 'ig');
+  this.matchChunkRegex = new RegExp('^' + this.getTokenRegExp(true) + '$');
   return this;
 };
 
@@ -112,7 +123,7 @@ Template.prototype.processTextNodeChunks = function (chunks) {
     if (!('' + chunk).length) {
       return acc;
     }
-    var match = chunk.match(new RegExp('^' + _this.getTokenRegExp(true) + '$'));
+    var match = chunk.match(_this.matchChunkRegex);
     var value = match ? dataMap[chunk] : chunk;
     if (typeof value === 'undefined') {
       return acc;
@@ -172,8 +183,12 @@ Template.prototype.copyAttributes = function (target, source) {
         value = _attrs$i.value;
 
     var preparedName = this.replaceTokens(name);
-    var preparedValue = new RegExp('^' + this.getTokenRegExp() + '$').test(value) ? dataMap[value] : this.replaceTokens(value);
+    var preparedValue = this.matchChunkRegex.test(value) ? dataMap[value] : this.replaceTokens(value);
     if (preparedName === '') {
+      return;
+    }
+    if (preparedName === stopNode) {
+      target.nodeStopper = stopNode;
       return;
     }
     newAttrs.push(preparedName);
@@ -251,7 +266,7 @@ Template.prototype.loop = function ($source, $target, debug) {
         switch ($sourceElement.nodeType) {
           case NODE_TYPES.TEXT_NODE:
             var content = $sourceElement.textContent;
-            var chunks = content.split(new RegExp(_this3.getTokenRegExp(), 'ig'));
+            var chunks = content.split(_this3.replaceChunkRegex);
 
             if (chunks.length === 1) {
               domFn(document.createTextNode($sourceElement.textContent));
@@ -327,8 +342,8 @@ Template.prototype.loop = function ($source, $target, debug) {
 
     //same node
     if (same($sourceElement, $targetElement)) {
+      $targetElement.nodeStopper !== stopNode && this.loop($sourceElement, $targetElement);
       this.copyAttributes($targetElement, $sourceElement);
-      this.loop($sourceElement, $targetElement);
       continue;
     }
   }
@@ -338,10 +353,9 @@ Template.prototype.loop = function ($source, $target, debug) {
 Template.prototype.render = function () {
   var target = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : document.createDocumentFragment();
 
+  target.nodeStopper = stopNode;
   return this.loop(this.container, target);
 };
-
-Template.prototype.parser = new DOMParser();
 
 Template.prototype.generateContainer = function (markup) {
   return this.parser.parseFromString(markup, "text/html").body;
@@ -376,7 +390,7 @@ Template.prototype.generateTokenName = function (index) {
 Template.prototype.replaceTokens = function (text) {
   var dataMap = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : this.dataMap;
 
-  return text.replace(new RegExp(this.getTokenRegExp(), 'ig'), function (token, index) {
+  return text.replace(this.replaceChunkRegex, function (token, index) {
     return dataMap[token];
   });
 };
@@ -385,9 +399,6 @@ Template.prototype.getTokenRegExp = function (groupMatches) {
   var indexRegex = (groupMatches ? '(' : '') + '\\d+' + (groupMatches ? ')' : '');
   return '(' + regExpEscape(this.PREFIX) + indexRegex + regExpEscape(this.POSTFIX) + ')';
 };
-
-Template.prototype.PREFIX = '{modulor_html_chunk_' + +new Date() + ':';
-Template.prototype.POSTFIX = '}';
 
 var html = exports.html = function html() {
   var _ref5;
@@ -402,10 +413,5 @@ var r = exports.r = function r() {
   return render(html.apply(undefined, arguments));
 };
 
-//@TODO make sub containers stop nodes in order to avoid their rerender (in case of components)
-//@TODO implement stop node attribute (e.g. <div ${stopNode}></div>)
 //@TODO think about collecting new nodes to append into fragment and appending the whole fragment later
-//@TODO handle undefined values when set attributes
-//@TODO maybe store templateId as string?
 //@TODO maybe converting special nodes to comment and then replacing it is not good idea?
-//@TODO handle variables in tag names (e.g. html`<${myTag}/>`)

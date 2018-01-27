@@ -189,10 +189,9 @@ describe('processing', () => {
     const _html = new Template({
       PREFIX: '{modulor_html_chunk:',
       POSTFIX: '}',
-      dataMap: data
     });
 
-    //_html.dataMap = data;
+    _html.dataMap = data;
 
     _html.copyAttributes(target, source);
 
