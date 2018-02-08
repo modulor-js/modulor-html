@@ -3,10 +3,13 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.r = exports.render = exports.html = exports.stopNode = undefined;
+exports.r = exports.render = exports.html = undefined;
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
+exports.stopNode = stopNode;
 exports.Template = Template;
 
 var _range2 = require('./range');
@@ -73,11 +76,26 @@ function getChunkType(chunk) {
     return 'futureResult';
   } else if (chunk instanceof Template) {
     return 'template';
+  } else if (chunk instanceof Function) {
+    return 'function';
   }
   return 'text';
 }
 
-var stopNode = exports.stopNode = 'modulor_stop_node_' + +new Date();
+function setAttribute($target, attributeName, attributeValue, originalValue) {
+  if (originalValue !== '' && attributeName in $target) {
+    $target[attributeName] = attributeValue;
+    return;
+  }
+  $target.setAttribute(attributeName, attributeValue);
+}
+
+var stopNodeValue = 'modulor_stop_node_' + +new Date();
+
+function stopNode($target) {
+  $target.nodeStopper = stopNodeValue;
+};
+
 var DEFAULT_PREFIX = '{modulor_html_chunk_' + +new Date() + ':';
 var DEFAULT_POSTFIX = '}';
 var DEFAULT_PARSER = new DOMParser();
@@ -168,8 +186,9 @@ Template.prototype.copyTextNodeChunks = function (chunks) {
   }, container);
 };
 
-//@TODO support promise in attributes
 Template.prototype.copyAttributes = function (target, source) {
+  var _this3 = this;
+
   var dataMap = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : this.dataMap;
 
   var newAttrs = [];
@@ -177,26 +196,43 @@ Template.prototype.copyAttributes = function (target, source) {
   if (!attrs.length) {
     return;
   }
-  for (var i = 0; i < attrs.length; i++) {
+
+  var _loop = function _loop(i) {
     var _attrs$i = attrs[i],
         name = _attrs$i.name,
         value = _attrs$i.value;
 
-    var preparedName = this.replaceTokens(name);
-    var preparedValue = this.matchChunkRegex.test(value) ? dataMap[value] : this.replaceTokens(value);
+    var preparedName = _this3.matchChunkRegex.test(name) ? dataMap[name] : _this3.replaceTokens(name);
+    var preparedValue = _this3.matchChunkRegex.test(value) ? dataMap[value] : _this3.replaceTokens(value);
     if (preparedName === '') {
-      return;
+      return {
+        v: void 0
+      };
     }
-    if (preparedName === stopNode) {
-      target.nodeStopper = stopNode;
-      return;
+    if (getChunkType(preparedName) === 'function') {
+      preparedName(target, preparedValue);
+      return 'continue';
     }
     newAttrs.push(preparedName);
-    if (value !== '' && preparedName in target) {
-      target[preparedName] = preparedValue;
-      continue;
+    if (getChunkType(preparedValue) === 'futureResult') {
+      preparedValue.then(function (result) {
+        return setAttribute(target, preparedName, result);
+      });
+      return 'continue';
     }
-    target.setAttribute(preparedName, preparedValue);
+    setAttribute(target, preparedName, preparedValue, value);
+  };
+
+  for (var i = 0; i < attrs.length; i++) {
+    var _ret = _loop(i);
+
+    switch (_ret) {
+      case 'continue':
+        continue;
+
+      default:
+        if ((typeof _ret === 'undefined' ? 'undefined' : _typeof(_ret)) === "object") return _ret.v;
+    }
   }
 
   //@TODO refactor here
@@ -210,7 +246,7 @@ Template.prototype.copyAttributes = function (target, source) {
 };
 
 Template.prototype.loop = function ($source, $target, debug) {
-  var _this3 = this;
+  var _this4 = this;
 
   for (var i = 0, offset = 0;; i++) {
 
@@ -235,7 +271,7 @@ Template.prototype.loop = function ($source, $target, debug) {
     }
 
     if (!$targetElement || !same($sourceElement, $targetElement)) {
-      var _ret = function () {
+      var _ret2 = function () {
         //@TODO strange behaviour here, have to make it a closure
         var fn = function fn($target, $targetElement) {
           return function ($el) {
@@ -250,7 +286,7 @@ Template.prototype.loop = function ($source, $target, debug) {
         var domFn = fn($target, $targetElement);
         var getRange = function getRange($targetElement, replacementType) {
 
-          if ($targetElement && $targetElement.range && $targetElement.replacementType === replacementType && $targetElement.templateId === _this3.templateId) {
+          if ($targetElement && $targetElement.range && $targetElement.replacementType === replacementType && $targetElement.templateId === _this4.templateId) {
             return $targetElement.range;
           } else {
             var range = new _range2.NodesRange(document.createTextNode(''), document.createTextNode(''));
@@ -258,7 +294,7 @@ Template.prototype.loop = function ($source, $target, debug) {
 
             startNode.range = range;
             startNode.replacementType = replacementType;
-            startNode.templateId = _this3.templateId;
+            startNode.templateId = _this4.templateId;
             domFn(range.extractContents());
             return range;
           }
@@ -266,7 +302,7 @@ Template.prototype.loop = function ($source, $target, debug) {
         switch ($sourceElement.nodeType) {
           case NODE_TYPES.TEXT_NODE:
             var content = $sourceElement.textContent;
-            var chunks = content.split(_this3.replaceChunkRegex);
+            var chunks = content.split(_this4.replaceChunkRegex);
 
             if (chunks.length === 1) {
               domFn(document.createTextNode($sourceElement.textContent));
@@ -274,9 +310,10 @@ Template.prototype.loop = function ($source, $target, debug) {
             }
 
             var range = getRange($targetElement, 'textContent');
-            var processedChunks = _this3.processTextNodeChunks(chunks);
-            var $processedChunksFragment = _this3.copyTextNodeChunks(processedChunks);
-            _this3.loop($processedChunksFragment, range);
+            var processedChunks = _this4.processTextNodeChunks(chunks);
+            var $processedChunksFragment = _this4.copyTextNodeChunks(processedChunks);
+            _this4.loop($processedChunksFragment, range);
+            range.update();
             offset += range.childNodes.length + 1;
             break;
           case NODE_TYPES.COMMENT_NODE:
@@ -286,8 +323,8 @@ Template.prototype.loop = function ($source, $target, debug) {
 
               if (type === 'futureResult') {
                 $sourceElement.futureResult.then(function (response) {
-                  var $frag = _this3.copyTextNodeChunks(response);
-                  _this3.loop($frag, _range);
+                  var $frag = _this4.copyTextNodeChunks(response);
+                  _this4.loop($frag, _range);
                   //update range for future promise resolves
                   //@TODO write better explanation
                   _range.update();
@@ -299,6 +336,7 @@ Template.prototype.loop = function ($source, $target, debug) {
               }
               if (type === 'template') {
                 $sourceElement.template.render(_range);
+                $target.update();
                 offset += _range.childNodes.length + 1;
 
                 break;
@@ -308,29 +346,33 @@ Template.prototype.loop = function ($source, $target, debug) {
                 $frag.appendChild($sourceElement.element);
 
                 //@TODO probably better to simply replace elements in range with ones from $frag
-                _this3.loop($frag, _range);
+                _this4.loop($frag, _range);
+                $target.update();
                 offset += _range.childNodes.length + 1;
 
                 break;
               }
             }
-            domFn(document.createComment(_this3.replaceTokens($sourceElement.textContent)));
+            domFn(document.createComment(_this4.replaceTokens($sourceElement.textContent)));
             break;
           case NODE_TYPES.ELEMENT_NODE:
             var newChild = document.createElement($sourceElement.tagName.toLowerCase());
 
-            _this3.loop($sourceElement, newChild);
+            _this4.loop($sourceElement, newChild);
             domFn(newChild);
 
             //set attributes after whole subtree has build,
             //because node content might be needed before setter being executed
-            _this3.copyAttributes(newChild, $sourceElement);
+            _this4.copyAttributes(newChild, $sourceElement);
             break;
+        }
+        if ($target instanceof _range2.NodesRange) {
+          $target.update();
         }
         return 'continue';
       }();
 
-      if (_ret === 'continue') continue;
+      if (_ret2 === 'continue') continue;
     }
 
     //at this point we are sure both elements exist
@@ -342,7 +384,7 @@ Template.prototype.loop = function ($source, $target, debug) {
 
     //same node
     if (same($sourceElement, $targetElement)) {
-      $targetElement.nodeStopper !== stopNode && this.loop($sourceElement, $targetElement);
+      $targetElement.nodeStopper !== stopNodeValue && this.loop($sourceElement, $targetElement);
       this.copyAttributes($targetElement, $sourceElement);
       continue;
     }
@@ -353,7 +395,7 @@ Template.prototype.loop = function ($source, $target, debug) {
 Template.prototype.render = function () {
   var target = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : document.createDocumentFragment();
 
-  target.nodeStopper = stopNode;
+  stopNode(target);
   return this.loop(this.container, target);
 };
 
@@ -362,7 +404,7 @@ Template.prototype.generateContainer = function (markup) {
 };
 
 Template.prototype.prepareLiterals = function (_ref) {
-  var _this4 = this;
+  var _this5 = this;
 
   for (var _len = arguments.length, interpolations = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
     interpolations[_key - 1] = arguments[_key];
@@ -377,7 +419,7 @@ Template.prototype.prepareLiterals = function (_ref) {
         acc = _ref4[0],
         dataMap = _ref4[1];
 
-    var keyName = _this4.generateTokenName(index);
+    var keyName = _this5.generateTokenName(index);
     dataMap[keyName] = interpolations[index];
     return [acc.concat(keyName).concat(chunk), dataMap];
   }, [firstChunk, {}]);

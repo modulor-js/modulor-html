@@ -36,18 +36,10 @@ NodesRange.prototype.appendChild = function ($el) {
 
 NodesRange.prototype.removeChild = function ($el) {
   this.stopNode.parentNode.removeChild($el);
-  var index = this.childNodes.indexOf($el);
-  if (!~index) {
-    return;
-  }
   this.update();
 };
 
 NodesRange.prototype.replaceChild = function ($newElement, $oldElement) {
-  var index = this.childNodes.indexOf($oldElement);
-  if (!~index) {
-    return;
-  }
   $oldElement.parentNode.replaceChild($newElement, $oldElement);
   this.update();
 };
