@@ -233,6 +233,7 @@ Template.prototype.loop = function($source, $target, debug){
           const processedChunks = this.processTextNodeChunks(chunks);
           const $processedChunksFragment = this.copyTextNodeChunks(processedChunks);
           this.loop($processedChunksFragment, range);
+          range.update();
           offset += range.childNodes.length + 1;
           break;
         case NODE_TYPES.COMMENT_NODE:
@@ -255,6 +256,7 @@ Template.prototype.loop = function($source, $target, debug){
             }
             if(type === 'template'){
               $sourceElement.template.render(range);
+              $target.update();
               offset += range.childNodes.length + 1;
 
               break;
@@ -265,6 +267,7 @@ Template.prototype.loop = function($source, $target, debug){
 
               //@TODO probably better to simply replace elements in range with ones from $frag
               this.loop($frag, range);
+              $target.update();
               offset += range.childNodes.length + 1;
 
               break;
@@ -282,6 +285,9 @@ Template.prototype.loop = function($source, $target, debug){
           //because node content might be needed before setter being executed
           this.copyAttributes(newChild, $sourceElement);
           break;
+      }
+      if($target instanceof NodesRange){
+        $target.update();
       }
       continue;
     }
