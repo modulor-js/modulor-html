@@ -55,16 +55,31 @@ function regExpEscape(literalString){
 
 function getChunkType(chunk){
   if(chunk instanceof Node){
-    return 'element'
+    return 'element';
   } else if(chunk instanceof Promise){
-    return 'futureResult'
+    return 'futureResult';
   } else if(chunk instanceof Template){
-    return 'template'
+    return 'template';
+  } else if(chunk instanceof Function){
+    return 'function';
   }
   return 'text';
 }
 
-export const stopNode = `modulor_stop_node_${+(new Date())}`;
+function setAttribute($target, attributeName, attributeValue, originalValue){
+  if(originalValue !== '' && attributeName in $target){
+    $target[attributeName] = attributeValue;
+    return;
+  }
+  $target.setAttribute(attributeName, attributeValue);
+}
+
+const stopNodeValue = `modulor_stop_node_${+(new Date())}`;
+
+export function stopNode($target){
+  $target.nodeStopper = stopNodeValue;
+};
+
 const DEFAULT_PREFIX  = `{modulor_html_chunk_${+new Date()}:`;
 const DEFAULT_POSTFIX = '}';
 const DEFAULT_PARSER = new DOMParser();
@@ -138,26 +153,25 @@ Template.prototype.copyTextNodeChunks = function(chunks, dataMap = this.dataMap,
   }, container);
 };
 
-//@TODO support promise in attributes
 Template.prototype.copyAttributes = function(target, source, dataMap = this.dataMap){
   const newAttrs = [];
   const attrs = source.attributes;
   if(!attrs.length){ return; }
   for(let i = 0; i < attrs.length; i++){
     const { name, value } = attrs[i];
-    const preparedName = this.replaceTokens(name);
+    const preparedName = this.matchChunkRegex.test(name) ? dataMap[name] : this.replaceTokens(name);
     const preparedValue = this.matchChunkRegex.test(value) ? dataMap[value] : this.replaceTokens(value);
     if(preparedName === ''){ return; }
-    if(preparedName === stopNode){
-      target.nodeStopper = stopNode;
-      return;
-    }
-    newAttrs.push(preparedName);
-    if(value !== '' && preparedName in target){
-      target[preparedName] = preparedValue;
+    if(getChunkType(preparedName) === 'function'){
+      preparedName(target, preparedValue);
       continue;
     }
-    target.setAttribute(preparedName, preparedValue);
+    newAttrs.push(preparedName);
+    if(getChunkType(preparedValue) === 'futureResult'){
+      preparedValue.then((result) => setAttribute(target, preparedName, result));
+      continue;
+    }
+    setAttribute(target, preparedName, preparedValue, value);
   }
 
   //@TODO refactor here
@@ -301,7 +315,7 @@ Template.prototype.loop = function($source, $target, debug){
 
     //same node
     if(same($sourceElement, $targetElement)){
-      ($targetElement.nodeStopper !== stopNode) && this.loop($sourceElement, $targetElement);
+      ($targetElement.nodeStopper !== stopNodeValue) && this.loop($sourceElement, $targetElement);
       this.copyAttributes($targetElement, $sourceElement);
       continue;
     }
@@ -310,7 +324,7 @@ Template.prototype.loop = function($source, $target, debug){
 };
 
 Template.prototype.render = function(target = document.createDocumentFragment()){
-  target.nodeStopper = stopNode;
+  stopNode(target);
   return this.loop(this.container, target);
 };
 
