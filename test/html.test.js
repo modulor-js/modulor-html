@@ -495,6 +495,30 @@ describe('transitions', () => {
     expect(constructorASpy).not.toHaveBeenCalled();
     expect(setterASpy).toHaveBeenCalledTimes(1);
   });
+
+  it('ternary operator', () => {
+    const $container = document.createElement('div');
+
+    const tpl = (scope) => html`
+      ${scope ? html`
+        <span></span>
+      ` : html`
+        <div class="foo1"></div>
+        <div class="foo2"></div>
+      `}`;
+
+    const snapshot1 = `<div class="foo1"></div>
+        <div class="foo2"></div>
+      `;
+
+    const snapshot2 = `<span></span>
+      `;
+
+    tpl(false).render($container);
+    expect($container.innerHTML).toBe(snapshot1);
+    tpl(true).render($container, true);
+    expect($container.innerHTML).toBe(snapshot2);
+  })
 });
 
 
