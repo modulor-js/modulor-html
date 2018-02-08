@@ -159,6 +159,10 @@ describe('processing', () => {
 
   describe('copy attributes', () => {
 
+    const spyNoValue = jest.fn();
+    const spyWithValue = jest.fn();
+    const spyWithDynamicValue = jest.fn();
+
     const element = document.createElement('div');
     element.innerHTML = `
       <input type="checkbox"
@@ -168,7 +172,11 @@ describe('processing', () => {
              {modulor_html_chunk:2}
              {modulor_html_chunk:3}="{modulor_html_chunk:4}"
              autofocus="{modulor_html_chunk:5}"
-             test-data="{modulor_html_chunk:6}"/>
+             test-data="{modulor_html_chunk:6}"
+             {modulor_html_chunk:7}
+             {modulor_html_chunk:8}="bla"
+             {modulor_html_chunk:9}="{modulor_html_chunk:10}"
+             baz="{modulor_html_chunk:11}"/>
     `;
 
     const source = element.querySelector('input');
@@ -184,6 +192,11 @@ describe('processing', () => {
       '{modulor_html_chunk:4}': 'some value',
       '{modulor_html_chunk:5}': true,
       '{modulor_html_chunk:6}': { a: { b: 12 } },
+      '{modulor_html_chunk:7}': ($target, value) => spyNoValue($target, value),
+      '{modulor_html_chunk:8}': ($target, value) => spyWithValue($target, value),
+      '{modulor_html_chunk:9}': ($target, value) => spyWithDynamicValue($target, value),
+      '{modulor_html_chunk:10}': { c: 123 },
+      '{modulor_html_chunk:11}': Promise.resolve('promise result'),
     };
 
     const _html = new Template({
@@ -220,6 +233,17 @@ describe('processing', () => {
     it('handles attributes where value is not required', () => {
       expect(target.getAttribute('checked')).toBe('');
       expect(target.checked).toBe(true);
+    });
+
+    it('handles attributes as functions', () => {
+      expect(spyNoValue).toHaveBeenCalledWith(target, '');
+      expect(spyWithValue).toHaveBeenCalledWith(target, 'bla');
+      expect(spyWithDynamicValue).toHaveBeenCalledWith(target, data['{modulor_html_chunk:10}']);
+    });
+
+    it('handles promises in attributes', async () => {
+      await new Promise(resolve => setTimeout(resolve, 1));
+      expect(target.getAttribute('baz')).toBe('promise result');
     });
 
     it('copies properties correctly', () => {

@@ -66,6 +66,14 @@ function getChunkType(chunk){
   return 'text';
 }
 
+function setAttribute($target, attributeName, attributeValue, originalValue){
+  if(originalValue !== '' && attributeName in $target){
+    $target[attributeName] = attributeValue;
+    return;
+  }
+  $target.setAttribute(attributeName, attributeValue);
+}
+
 const stopNodeValue = `modulor_stop_node_${+(new Date())}`;
 
 export function stopNode($target){
@@ -145,7 +153,6 @@ Template.prototype.copyTextNodeChunks = function(chunks, dataMap = this.dataMap,
   }, container);
 };
 
-//@TODO support promise in attributes
 Template.prototype.copyAttributes = function(target, source, dataMap = this.dataMap){
   const newAttrs = [];
   const attrs = source.attributes;
@@ -160,11 +167,11 @@ Template.prototype.copyAttributes = function(target, source, dataMap = this.data
       continue;
     }
     newAttrs.push(preparedName);
-    if(value !== '' && preparedName in target){
-      target[preparedName] = preparedValue;
+    if(getChunkType(preparedValue) === 'futureResult'){
+      preparedValue.then((result) => setAttribute(target, preparedName, result));
       continue;
     }
-    target.setAttribute(preparedName, preparedValue);
+    setAttribute(target, preparedName, preparedValue, value);
   }
 
   //@TODO refactor here
