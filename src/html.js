@@ -19,14 +19,16 @@ const NODE_TYPES = {
 
 const ITERATIONS_THRESHOLD = 1000;
 
-function same(nodeA, nodeB){
+function same(nodeA, nodeB, sanitizeNodePrefix = ''){
   if(!nodeA || !nodeB){
     return false;
   }
   if(nodeA.nodeType !== nodeB.nodeType){
     return false;
   }
-  if(nodeA.tagName && nodeB.tagName && nodeA.tagName === nodeB.tagName){
+  if(nodeA.tagName && nodeB.tagName &&
+    (nodeA.tagName.toLowerCase().replace(sanitizeNodePrefix, '') === nodeB.tagName.toLowerCase())
+  ){
     return true;
   }
   return nodeA.isEqualNode(nodeB);
@@ -84,6 +86,11 @@ const DEFAULT_PREFIX  = `{modulor_html_chunk_${+new Date()}:`;
 const DEFAULT_POSTFIX = '}';
 const DEFAULT_PARSER = new DOMParser();
 
+const DEFAULT_SANITIZE_NODE_PREFIX = `modulor_sanitize_node_${+(new Date())}:`;
+
+const sanitizeTags = ['table', 'tr', 'td'];
+const sanitizeTagsRegex = new RegExp(`<([ /])?(${sanitizeTags.join('|')})([ ][^]>)?`, 'igm');
+
 export function Template(options){
   this.PREFIX = options.PREFIX || DEFAULT_PREFIX;
   this.POSTFIX = options.POSTFIX || DEFAULT_POSTFIX;
@@ -92,6 +99,9 @@ export function Template(options){
 
   this.replaceChunkRegex = new RegExp(this.getTokenRegExp(), 'ig');
   this.matchChunkRegex = new RegExp(`^${this.getTokenRegExp(true)}$`);
+
+  this.sanitizeNodePrefix = options.SANITIZE_NODE_PREFIX || DEFAULT_SANITIZE_NODE_PREFIX;
+
   return this;
 };
 
@@ -102,7 +112,7 @@ Template.prototype.parse = function(...args){
   const cached = templatesCache[this.templateId];
 
   if(typeof cached === 'undefined'){
-    this.container = this.generateContainer(this.template);
+    this.container = this.generateContainer(this.sanitize(this.template));
     templatesCache[this.templateId] = this.container;
   } else {
     this.container = cached;
@@ -208,7 +218,7 @@ Template.prototype.loop = function($source, $target, debug){
       continue;
     }
 
-    if(!$targetElement || !same($sourceElement, $targetElement)){
+    if(!$targetElement || !same($sourceElement, $targetElement, this.sanitizeNodePrefix)){
       //@TODO strange behaviour here, have to make it a closure
       const fn = ($target, $targetElement) => ($el) => {
         if(!$targetElement){
@@ -290,7 +300,7 @@ Template.prototype.loop = function($source, $target, debug){
           domFn(document.createComment(this.replaceTokens($sourceElement.textContent)));
           break;
         case NODE_TYPES.ELEMENT_NODE:
-          const newChild = document.createElement($sourceElement.tagName.toLowerCase());
+          const newChild = document.createElement($sourceElement.tagName.toLowerCase().replace(this.sanitizeNodePrefix, ''));
 
           this.loop($sourceElement, newChild);
           domFn(newChild);
@@ -314,7 +324,7 @@ Template.prototype.loop = function($source, $target, debug){
     }
 
     //same node
-    if(same($sourceElement, $targetElement)){
+    if(same($sourceElement, $targetElement, this.sanitizeNodePrefix)){
       ($targetElement.nodeStopper !== stopNodeValue) && this.loop($sourceElement, $targetElement);
       this.copyAttributes($targetElement, $sourceElement);
       continue;
@@ -330,6 +340,12 @@ Template.prototype.render = function(target = document.createDocumentFragment())
 
 Template.prototype.generateContainer = function(markup){
   return this.parser.parseFromString(markup, "text/html").body;
+};
+
+
+
+Template.prototype.sanitize = function(str){
+  return str.replace(sanitizeTagsRegex, `<$1${this.sanitizeNodePrefix}$2`);
 };
 
 Template.prototype.prepareLiterals = function([firstChunk, ...restChunks], ...interpolations){
