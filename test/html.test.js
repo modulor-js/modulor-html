@@ -94,11 +94,47 @@ describe('basic',() => {
   });
 });
 
+describe('tables', () => {
+
+    const template = (rows, cols = []) => html`
+      <table>${rows.map(i => html`
+        <tr>${cols.map(j => html`<td>number: ${i}</td>`)}</tr>
+      `)}</table>
+    `;
+
+    //'`'
+    const fixture = (rows, cols = []) => `<table>${rows.map(i => `<tr>${cols.map(j => `<td>number: ${i}</td>`).join('')}</tr>
+      `).join('')}</table>
+    `;
+    //'`'
+
+    const $container = document.createElement('div');
+
+    it('renders correctly', () => {
+      const value1 = [1, 2, 3];
+      render(template(value1), $container);
+      expect($container.innerHTML).toBe(fixture(value1));
+
+      const value2 = [1, 2, 3, 6];
+      render(template(value2), $container);
+      expect($container.innerHTML).toBe(fixture(value2));
+
+      const value3 = [[1, 2], [3,4]];
+      render(template(value3[0], value3[1]), $container);
+      expect($container.innerHTML).toBe(fixture(value3[0], value3[1]));
+
+      const value4 = [1];
+      render(template(value1), $container);
+      expect($container.innerHTML).toBe(fixture(value1));
+    });
+});
+
 
 describe('processing', () => {
   const _html = new Template({
     PREFIX: '{modulor_html_chunk:',
     POSTFIX: '}',
+    SANITIZE_NODE_PREFIX: 'sanitize:',
   });
 
   it('is a function', () => {
@@ -155,6 +191,57 @@ describe('processing', () => {
         expect(prepared).toBe(testSet.expectedReplacedTokens);
       });
     });
+  });
+
+  describe('sanitize', () => {
+
+    const testSets = [
+      {
+        input: '<div></div>',
+        expectation: '<div></div>'
+      },
+      {
+        input: '<table attr-one="1"></table>',
+        expectation: '<sanitize:table attr-one="1"></sanitize:table>'
+      },
+      {
+        input: `<table attr-one="1"
+        foo=bar bla baz="ok"
+        ></table>`,
+        expectation: `<sanitize:table attr-one="1"
+        foo=bar bla baz="ok"
+        ></sanitize:table>`
+      },
+      {
+        input: `
+          <table>
+            <tr>
+              <td>foo</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><div></div></td>
+            </tr>
+          </table>
+        `,
+        expectation: `
+          <sanitize:table>
+            <sanitize:tr>
+              <sanitize:td>foo</sanitize:td>
+              <sanitize:td></sanitize:td>
+            </sanitize:tr>
+            <sanitize:tr>
+              <sanitize:td><div></div></sanitize:td>
+            </sanitize:tr>
+          </sanitize:table>
+        `
+      },
+    ]
+    testSets.forEach((testSet, index) => {
+      it(`set #${index}`, () => {
+        expect(_html.sanitize(testSet.input)).toBe(testSet.expectation);
+      });
+    })
   });
 
   describe('copy attributes', () => {
