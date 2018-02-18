@@ -4,6 +4,7 @@ import 'document-register-element';
 import { html, render, r, stopNode, Template } from '../src/html';
 import { NodesRange } from '../src/range';
 
+
 const template = (scope) => r`
   <div foo="${scope.foo}" bar="${scope.bar}${scope.foo}" class="foo ${scope.classes}">
     <span>${scope.text}</span>
@@ -629,7 +630,22 @@ describe('transitions', () => {
     expect($container.innerHTML).toBe(snapshot1);
     tpl(true).render($container, true);
     expect($container.innerHTML).toBe(snapshot2);
-  })
+  });
+
+  it('ternary operator 2', () => {
+    const $container = document.createElement('div');
+
+    const tpl = (show) => html`${show ? html`<span>ok</span>`: ''}`;
+    const snapshot = '<span>ok</span>';
+
+    render(tpl(true), $container);
+    expect($container.innerHTML).toBe(snapshot);
+    render(tpl(false), $container);
+    expect($container.innerHTML).toBe('');
+    render(tpl(true), $container);
+    expect($container.innerHTML).toBe(snapshot);
+  });
+
 });
 
 

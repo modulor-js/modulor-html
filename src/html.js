@@ -26,6 +26,9 @@ function same(nodeA, nodeB, sanitizeNodePrefix = ''){
   if(nodeA.nodeType !== nodeB.nodeType){
     return false;
   }
+  if(nodeA.range != nodeB.range){
+    return false;
+  }
   if(nodeA.tagName && nodeB.tagName &&
     (nodeA.tagName.toLowerCase().replace(sanitizeNodePrefix, '') === nodeB.tagName.toLowerCase())
   ){
@@ -257,7 +260,6 @@ Template.prototype.loop = function($source, $target, debug){
           const processedChunks = this.processTextNodeChunks(chunks);
           const $processedChunksFragment = this.copyTextNodeChunks(processedChunks);
           this.loop($processedChunksFragment, range);
-          range.update();
           offset += range.childNodes.length + 1;
           break;
         case NODE_TYPES.COMMENT_NODE:
@@ -266,12 +268,11 @@ Template.prototype.loop = function($source, $target, debug){
             const range = getRange($targetElement, type);
 
             if(type === 'futureResult'){
+              range.update();
               $sourceElement.futureResult.then((response) => {
+                range.update();
                 const $frag = this.copyTextNodeChunks(response);
                 this.loop($frag, range);
-                //update range for future promise resolves
-                //@TODO write better explanation
-                range.update();
                 return $frag;
               });
               offset += range.childNodes.length + 1;
@@ -280,7 +281,6 @@ Template.prototype.loop = function($source, $target, debug){
             }
             if(type === 'template'){
               $sourceElement.template.render(range);
-              $target.update();
               offset += range.childNodes.length + 1;
 
               break;
@@ -291,7 +291,6 @@ Template.prototype.loop = function($source, $target, debug){
 
               //@TODO probably better to simply replace elements in range with ones from $frag
               this.loop($frag, range);
-              $target.update();
               offset += range.childNodes.length + 1;
 
               break;
@@ -309,9 +308,6 @@ Template.prototype.loop = function($source, $target, debug){
           //because node content might be needed before setter being executed
           this.copyAttributes(newChild, $sourceElement);
           break;
-      }
-      if($target instanceof NodesRange){
-        $target.update();
       }
       continue;
     }
