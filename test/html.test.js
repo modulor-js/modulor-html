@@ -1,7 +1,7 @@
 import 'document-register-element';
 //import 'custom-elements-jest';
 
-import { html, render, r, stopNode, Template } from '../src/html';
+import { html, render, r, stopNode, Template, containersMap } from '../src/html';
 import { NodesRange } from '../src/range';
 
 
@@ -27,7 +27,7 @@ const template = (scope) => r`
 `;
 
 
-const snapshot = (scope) => `<div foo="${scope.foo}" bar="${scope.bar}${scope.foo}" class="foo ${scope.classes}">
+const snapshot = (scope) => `<div class="foo ${scope.classes}" foo="${scope.foo}" bar="${scope.bar}${scope.foo}">
     <span>${scope.text}</span>
     i am ${scope.text} ok ${scope.foo} !
     ${scope.element.outerHTML}
@@ -132,11 +132,17 @@ describe('tables', () => {
 
 
 describe('processing', () => {
+
   const _html = new Template({
     PREFIX: '{modulor_html_chunk:',
     POSTFIX: '}',
     SANITIZE_NODE_PREFIX: 'sanitize:',
   });
+
+  const value1 = 1;
+  const value2 = 2;
+
+  _html.values = [value1, value2];
 
   it('is a function', () => {
     expect(typeof html).toBe('function')
@@ -144,41 +150,34 @@ describe('processing', () => {
 
   const testSets = [
     {
-      parsedString: _html.prepareLiterals`baz ${1}`,
+      parsedString: _html.prepareLiterals`baz ${value1}`,
       expectedPreparedLiterals: 'baz {modulor_html_chunk:0}',
-      expectedReplacedTokens: 'baz 1',
-      expectedData: { '{modulor_html_chunk:0}': 1 }
+      expectedReplacedTokens: 'baz 1'
     },
     {
-      parsedString: _html.prepareLiterals`${1} foo`,
+      parsedString: _html.prepareLiterals`${value1} foo`,
       expectedPreparedLiterals: '{modulor_html_chunk:0} foo',
       expectedReplacedTokens: '1 foo',
-      expectedData: { '{modulor_html_chunk:0}': 1 }
     },
     {
       parsedString: _html.prepareLiterals`foo`,
       expectedPreparedLiterals: 'foo',
       expectedReplacedTokens: 'foo',
-      expectedData: {}
     },
     {
-      parsedString: _html.prepareLiterals`foo ${1} bar ${2} baz`,
+      parsedString: _html.prepareLiterals`foo ${value1} bar ${value2} baz`,
       expectedPreparedLiterals: 'foo {modulor_html_chunk:0} bar {modulor_html_chunk:1} baz',
       expectedReplacedTokens: 'foo 1 bar 2 baz',
-      expectedData: { '{modulor_html_chunk:0}': 1, '{modulor_html_chunk:1}': 2 }
     }
   ];
 
   testSets.forEach((testSet, index) => {
     describe(`set ${index}`, () => {
       const parsedString = testSet.parsedString;
-      const [str, data] = parsedString;
+      const str = parsedString;
 
       it('prepares literals correctly', () => {
-        expect(parsedString).toEqual([
-          testSet.expectedPreparedLiterals,
-          testSet.expectedData
-        ]);
+        expect(parsedString).toEqual(testSet.expectedPreparedLiterals);
       });
 
       it('generates container correctly', () => {
@@ -188,7 +187,7 @@ describe('processing', () => {
       });
 
       testSet.expectedReplacedTokens && it('replaces tokens correctly', () => {
-        const prepared = _html.replaceTokens(str, data);
+        const prepared = _html.replaceTokens(str);
         expect(prepared).toBe(testSet.expectedReplacedTokens);
       });
     });
@@ -264,7 +263,8 @@ describe('processing', () => {
              {modulor_html_chunk:7}
              {modulor_html_chunk:8}="bla"
              {modulor_html_chunk:9}="{modulor_html_chunk:10}"
-             baz="{modulor_html_chunk:11}"/>
+             baz="{modulor_html_chunk:11}"
+             attr-{modulor_html_chunk:12}="test"/>
     `;
 
     const source = element.querySelector('input');
@@ -272,27 +272,28 @@ describe('processing', () => {
     const target = document.createElement('input');
     target['test-data'] = {};
 
-    const data = {
-      '{modulor_html_chunk:0}': 'foo value',
-      '{modulor_html_chunk:1}': 'some-attribute',
-      '{modulor_html_chunk:2}': 'checked',
-      '{modulor_html_chunk:3}': 'value',
-      '{modulor_html_chunk:4}': 'some value',
-      '{modulor_html_chunk:5}': true,
-      '{modulor_html_chunk:6}': { a: { b: 12 } },
-      '{modulor_html_chunk:7}': ($target, value) => spyNoValue($target, value),
-      '{modulor_html_chunk:8}': ($target, value) => spyWithValue($target, value),
-      '{modulor_html_chunk:9}': ($target, value) => spyWithDynamicValue($target, value),
-      '{modulor_html_chunk:10}': { c: 123 },
-      '{modulor_html_chunk:11}': Promise.resolve('promise result'),
-    };
+    const data = [
+      'foo value',
+      'some-attribute',
+      'checked',
+      'value',
+      'some value',
+      true,
+      { a: { b: 12 } },
+      ($target, value) => spyNoValue($target, value),
+      ($target, value) => spyWithValue($target, value),
+      ($target, value) => spyWithDynamicValue($target, value),
+      { c: 123 },
+      Promise.resolve('promise result'),
+      'test',
+    ];
 
     const _html = new Template({
       PREFIX: '{modulor_html_chunk:',
       POSTFIX: '}',
     });
 
-    _html.dataMap = data;
+    _html.values = data;
 
     _html.copyAttributes(target, source);
 
@@ -305,17 +306,18 @@ describe('processing', () => {
     });
 
     it('copies simple attribute value correctly', () => {
-      expect(target.getAttribute('foo')).toBe(data['{modulor_html_chunk:0}']);
+      expect(target.getAttribute('foo')).toBe(data[0]);
       expect(target.foo).toBeUndefined();
     });
 
     it('handles dynamic attribute name correctly', () => {
-      expect(target.getAttribute(data['{modulor_html_chunk:1}'])).toBe('ok');
-      expect(target[data['{modulor_html_chunk:1}']]).toBeUndefined();
+      expect(target.getAttribute(data[1])).toBe('ok');
+      expect(target[data[1]]).toBeUndefined();
     });
 
     it('handles dynamic attribute name and dynamic value correctly', () => {
-      expect(target.value).toBe(data['{modulor_html_chunk:4}']);
+      expect(target.value).toBe(data[4]);
+      expect(target.getAttribute(`attr-${data[12]}`)).toBe('test');
     });
 
     it('handles attributes where value is not required', () => {
@@ -326,7 +328,7 @@ describe('processing', () => {
     it('handles attributes as functions', () => {
       expect(spyNoValue).toHaveBeenCalledWith(target, '');
       expect(spyWithValue).toHaveBeenCalledWith(target, 'bla');
-      expect(spyWithDynamicValue).toHaveBeenCalledWith(target, data['{modulor_html_chunk:10}']);
+      expect(spyWithDynamicValue).toHaveBeenCalledWith(target, data[10]);
     });
 
     it('handles promises in attributes', async () => {
@@ -335,10 +337,42 @@ describe('processing', () => {
     });
 
     it('copies properties correctly', () => {
-      expect(target.autofocus).toBe(data['{modulor_html_chunk:5}']);
+      expect(target.autofocus).toBe(data[5]);
 
-      expect(target['test-data']).toEqual(data['{modulor_html_chunk:6}']);
+      expect(target['test-data']).toEqual(data[6]);
       expect(target.hasAttribute('test-data')).toBe(false);
+    });
+
+    it('foo', () => {
+
+      const newData = [
+        'foo value',
+        '',
+        '',
+        'value',
+        'some value',
+        true,
+        { a: { b: 12 } },
+        ($target, value) => spyNoValue($target, value),
+        ($target, value) => spyWithValue($target, value),
+        ($target, value) => spyWithDynamicValue($target, value),
+        { c: 123 },
+        Promise.resolve('promise result'),
+        'quux',
+      ];
+
+      _html.prevValues = data;
+      _html.values = newData;
+
+      _html.copyAttributes(target, source);
+
+      expect(target.getAttribute('checked')).toBe(null);
+      expect(target.checked).toBe(false);
+
+      expect(target.getAttribute('some-attribute')).toBe(null);
+
+      expect(target.getAttribute(`attr-${data[12]}`)).toBe(null);
+      expect(target.getAttribute(`attr-${newData[12]}`)).toBe('test');
     });
   });
 
@@ -646,6 +680,56 @@ describe('transitions', () => {
     expect($container.innerHTML).toBe(snapshot);
   });
 
+  it('updates attributes correctly', () => {
+    const container = document.createElement('div');
+
+    const tpl = (scope) => html`
+      <div ref="inner" foo="${scope.a}" bla-${scope.b}-${scope.c}="ok-${scope.d}"></div>
+    `;
+
+    const snapshot = (scope, extra = '') => `<div ref="inner" foo="${scope.a}"${extra} bla-${scope.b}-${scope.c}="ok-${scope.d}"></div>
+    `;
+
+    const data1 = { a: 1, b: 2, c: 3, d: 4 };
+    render(tpl(data1), container);
+    expect(container.innerHTML).toBe(snapshot(data1));
+
+    container.querySelector('[ref="inner"]').setAttribute('extra', 'bla');
+    const data2 = { a: 10, b: 20, c: 30, d: 40 };
+    render(tpl(data2), container);
+    expect(container.innerHTML).toBe(snapshot(data2, ' extra="bla"'));
+  });
+
+  it('updates classes correctly', () => {
+    const container = document.createElement('div');
+
+    const tpl = (scope) => html`
+      <div ref="inner" class="foo ${scope.a} ${scope.b}-bar baz-${scope.c}"></div>
+    `;
+
+    const data1 = { a: 1, b: 2, c: 3, d: 4 };
+    const snapshot1 = `<div ref="inner" class="foo ${data1.a} ${data1.b}-bar baz-${data1.c}"></div>
+    `;
+
+    render(tpl(data1), container);
+    expect(container.innerHTML).toBe(snapshot1);
+
+    const data2 = { a: 3, b: 5, c: 7, d: 9 };
+    const snapshot2 = `<div ref="inner" class="foo ${data2.a} ${data2.b}-bar baz-${data2.c}"></div>
+    `;
+
+    render(tpl(data2), container);
+    expect(container.innerHTML).toBe(snapshot2);
+
+    container.querySelector('[ref="inner"]').classList.add('manually-added');
+    const data3 = { a: 8, b: 3, c: 9, d: 2 };
+    const snapshot3 = `<div ref="inner" class="foo manually-added ${data3.a} ${data3.b}-bar baz-${data3.c}"></div>
+    `;
+
+    render(tpl(data3), container);
+    expect(container.innerHTML).toBe(snapshot3);
+  });
+
 });
 
 
@@ -685,21 +769,46 @@ describe('Range', () => {
 
 //describe('experiment', () => {
 
-  //it('bla', async () => {
+  //it.only('bla', async () => {
 
     //const container = document.createElement('div');
+    //const container2 = document.createElement('div');
 
-    //render(html`<div>${Promise.resolve('ok')}</div>`, container);
+    //const tpl = (scope) => html`
+      //<div ref="something" ${'foo'}="asd" class="${scope.a} ${scope.a < 10 ? 'okok' : void 0}  ${scope.a < 10 ? 'foobaz' : ''} test foo-${scope.b}" foo="${scope.a}" bla-${scope.c}-${scope.a}="ok-${scope.d}">${scope.b}</div>
+    //`;
 
-    //await new Promise(resolve => setTimeout(resolve, 1));
+    //const tpl2 = (scope) => html`
+      //<span bla="${scope.a}">${scope.b}</div>
+    //`;
+
+    //const rr = tpl2({ a: 1, b: 2 });
+
+    //render(tpl({ a: 1, b: 2, c: 3, d: 4 }), container);
+    //container.querySelector('[ref="something"]').classList.add('foo')
+    //render(tpl({ a: 10, b: 20, c: 30, d: 40 }), container);
+    ////render(tpl({ a: 1, b: 2, c: 3, d: 4 }), container);
+    ////render(tpl({ a: 2, b: 3 }), container);
+    ////render(rr, container);
+    ////render(rr, container);
+    ////render(tpl2({ a: 5, b: 2 }), container);
+    ////render(tpl2({ a: 5, b: 6 }), container);
+    ////render(tpl({ a: 1, b: 2 }), container);
 
     //console.log(container.innerHTML);
+    ////for (var value of containersMap.values()) {
+      ////console.log(value);
+    ////}
 
-    //render(html`<div>${Promise.resolve('foo').then((str) => html`wow ${str}`)}</div>`, container);
+    ////await new Promise(resolve => setTimeout(resolve, 1));
 
-    //await new Promise(resolve => setTimeout(resolve, 1));
+    ////console.log(container.innerHTML);
 
-    //console.log(container.innerHTML);
+    ////render(html`<div>${Promise.resolve('foo').then((str) => html`wow ${str}`)}</div>`, container);
+
+    ////await new Promise(resolve => setTimeout(resolve, 1));
+
+    ////console.log(container.innerHTML);
 
     //expect(true).toBe(true);
   //});

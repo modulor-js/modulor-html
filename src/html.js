@@ -100,16 +100,25 @@ export function Template(options){
 
   this.parser = options.parser || DEFAULT_PARSER;
 
-  this.replaceChunkRegex = new RegExp(this.getTokenRegExp(), 'ig');
+  this.splitChunkRegex = new RegExp(this.getTokenRegExp(), 'ig');
+  this.findChunksRegex = new RegExp(this.getTokenRegExp(true), 'ig');
+  this.replaceChunkRegex = new RegExp(this.getTokenRegExp(true), 'ig');
   this.matchChunkRegex = new RegExp(`^${this.getTokenRegExp(true)}$`);
 
   this.sanitizeNodePrefix = options.SANITIZE_NODE_PREFIX || DEFAULT_SANITIZE_NODE_PREFIX;
 
+  this.updates = [];
+
   return this;
 };
 
-Template.prototype.parse = function(...args){
-  [this.template, this.dataMap] = this.prepareLiterals(...args);
+export const containersMap = new Map();
+
+Template.prototype.parse = function(chunks, ...interpolations){
+  this.prevValues = [];
+  this.values = interpolations;
+
+  this.template = this.prepareLiterals(chunks);
 
   this.templateId = hash(this.template);
   const cached = templatesCache[this.templateId];
@@ -123,13 +132,17 @@ Template.prototype.parse = function(...args){
   return this;
 }
 
-Template.prototype.processTextNodeChunks = function(chunks, dataMap = this.dataMap){
+Template.prototype.getChunkById = function(id, dataMap = this.values){
+  return dataMap[id];
+}
+
+Template.prototype.processTextNodeChunks = function(chunks){
   return chunks.reduce((acc, chunk) => {
     if(!`${chunk}`.length){
       return acc;
     }
     const match = chunk.match(this.matchChunkRegex);
-    const value = match ? dataMap[chunk] : chunk;
+    const value = match ? this.getChunkById(match[2]) : chunk;
     if(typeof value === 'undefined'){ return acc; }
     const chunkType = getChunkType(value);
     if(chunkType !== 'text'){
@@ -145,7 +158,7 @@ Template.prototype.processTextNodeChunks = function(chunks, dataMap = this.dataM
   }, []);
 };
 
-Template.prototype.copyTextNodeChunks = function(chunks, dataMap = this.dataMap, container = document.createDocumentFragment()){
+Template.prototype.copyTextNodeChunks = function(chunks, container = document.createDocumentFragment()){
   return [].concat(chunks).reduce((container, chunk) => {
     if(chunk.isSpecialChunk){
       container.appendChild(chunk);
@@ -166,35 +179,88 @@ Template.prototype.copyTextNodeChunks = function(chunks, dataMap = this.dataMap,
   }, container);
 };
 
-Template.prototype.copyAttributes = function(target, source, dataMap = this.dataMap){
-  const newAttrs = [];
-  const attrs = source.attributes;
-  if(!attrs.length){ return; }
-  for(let i = 0; i < attrs.length; i++){
-    const { name, value } = attrs[i];
-    const preparedName = this.matchChunkRegex.test(name) ? dataMap[name] : this.replaceTokens(name);
-    const preparedValue = this.matchChunkRegex.test(value) ? dataMap[value] : this.replaceTokens(value);
-    if(preparedName === ''){ return; }
-    if(getChunkType(preparedName) === 'function'){
-      preparedName(target, preparedValue);
+Template.prototype.copyAttributes = function(target, source){
+  const sourceAttributes = source.attributes;
+  const targetAttributes = target.attributes;
+
+  const updates = [];
+  const attributesToKeep = {};
+
+  for(let i = 0; i < sourceAttributes.length; i++){
+    let { name, value }  = sourceAttributes[i];
+    const nameIsDynamic = name.match(this.splitChunkRegex);
+    const valueIsDynamic = value.match(this.splitChunkRegex);
+
+    attributesToKeep[name] = true;
+
+    if(!nameIsDynamic && !valueIsDynamic){
+      setAttribute(target, name, value);
       continue;
     }
-    newAttrs.push(preparedName);
-    if(getChunkType(preparedValue) === 'futureResult'){
-      preparedValue.then((result) => setAttribute(target, preparedName, result));
+
+    if(name === 'class'){
+      target.className = '';
+      value.split(' ').forEach((className) => {
+        if(!className.match(this.splitChunkRegex)){
+          target.classList.add(className);
+          return;
+        }
+        updates.push(() => {
+          const newValue = this.replaceTokens(className);
+          const oldValue = this.replaceTokens(className, this.prevValues);
+          if(oldValue !== newValue){
+            oldValue && target.classList.remove(oldValue);
+            newValue && target.classList.add(newValue);
+          }
+        });
+      });
+
       continue;
     }
-    setAttribute(target, preparedName, preparedValue, value);
+
+    const matchName = name.match(this.matchChunkRegex);
+    const matchValue = value.match(this.matchChunkRegex);
+
+    updates.push(() => {
+      const preparedName = matchName ? this.getChunkById(matchName[2]) : this.replaceTokens(name);
+      const preparedPrevName = matchName ? this.getChunkById(matchName[2], this.prevValues) : this.replaceTokens(name, this.prevValues);
+
+      const preparedValue = matchValue ? this.getChunkById(matchValue[2]) : this.replaceTokens(value);
+      const preparedPrevValue = matchValue ? this.getChunkById(matchValue[2], this.prevValues) : this.replaceTokens(value, this.prevValues);
+
+      if(preparedName !== preparedPrevName){
+        target.removeAttribute(preparedPrevName);
+      }
+
+      if(!preparedName){
+        return;
+      }
+
+      if(getChunkType(preparedName) === 'function'){
+        preparedName(target, preparedValue);
+        return;
+      }
+
+      if(getChunkType(preparedValue) === 'futureResult'){
+        preparedValue.then((result) => setAttribute(target, preparedName, result));
+        return;
+      }
+
+      setAttribute(target, preparedName, preparedValue, value);
+    });
   }
 
-  //@TODO refactor here
-  const targetAttrs = target.attributes;
-  for(let j = 0; j < targetAttrs.length; j++){
-    const attrName = targetAttrs[j].name;
-    if(!~newAttrs.indexOf(attrName)){
-      target.removeAttribute(attrName);
+
+  for(let i = 0; i < targetAttributes.length; i++){
+    let { name } = targetAttributes[i];
+    if(!attributesToKeep[name]){
+      target.removeAttribute(name);
     }
   }
+
+  updates.forEach(u => u());
+
+  return updates;
 };
 
 Template.prototype.loop = function($source, $target, debug){
@@ -249,7 +315,7 @@ Template.prototype.loop = function($source, $target, debug){
       switch($sourceElement.nodeType){
         case NODE_TYPES.TEXT_NODE:
           const content = $sourceElement.textContent;
-          const chunks = content.split(this.replaceChunkRegex);
+          const chunks = content.split(this.splitChunkRegex);
 
           if(chunks.length === 1){
             domFn(document.createTextNode($sourceElement.textContent));
@@ -257,9 +323,13 @@ Template.prototype.loop = function($source, $target, debug){
           }
 
           let range = getRange($targetElement, 'textContent');
-          const processedChunks = this.processTextNodeChunks(chunks);
-          const $processedChunksFragment = this.copyTextNodeChunks(processedChunks);
-          this.loop($processedChunksFragment, range);
+          const updateFn = () => {
+            const processedChunks = this.processTextNodeChunks(chunks);
+            const $processedChunksFragment = this.copyTextNodeChunks(processedChunks);
+            this.loop($processedChunksFragment, range);
+          }
+          this.updates.push(updateFn);
+          updateFn();
           offset += range.childNodes.length + 1;
           break;
         case NODE_TYPES.COMMENT_NODE:
@@ -304,9 +374,9 @@ Template.prototype.loop = function($source, $target, debug){
           this.loop($sourceElement, newChild);
           domFn(newChild);
 
-          //set attributes after whole subtree has build,
-          //because node content might be needed before setter being executed
-          this.copyAttributes(newChild, $sourceElement);
+          const updates = this.copyAttributes(newChild, $sourceElement);
+          this.updates = this.updates.concat(updates);
+
           break;
       }
       continue;
@@ -322,7 +392,9 @@ Template.prototype.loop = function($source, $target, debug){
     //same node
     if(same($sourceElement, $targetElement, this.sanitizeNodePrefix)){
       ($targetElement.nodeStopper !== stopNodeValue) && this.loop($sourceElement, $targetElement);
-      this.copyAttributes($targetElement, $sourceElement);
+
+      const updates = this.copyAttributes($targetElement, $sourceElement);
+      this.updates = this.updates.concat(updates);
       continue;
     }
   }
@@ -330,8 +402,23 @@ Template.prototype.loop = function($source, $target, debug){
 };
 
 Template.prototype.render = function(target = document.createDocumentFragment()){
+  const cached = containersMap.get(target);
+  if((cached || {}).templateId === this.templateId){
+    cached.update(this.values);
+    return;
+  }
   stopNode(target);
+  containersMap.set(target, {
+    templateId: this.templateId,
+    update: this.update.bind(this),
+  });
   return this.loop(this.container, target);
+};
+
+Template.prototype.update = function(newData){
+  this.prevValues = this.values;
+  this.values = newData;
+  this.updates.forEach(u => u());
 };
 
 Template.prototype.generateContainer = function(markup){
@@ -344,21 +431,20 @@ Template.prototype.sanitize = function(str){
   return str.replace(sanitizeTagsRegex, `<$1${this.sanitizeNodePrefix}$2`);
 };
 
-Template.prototype.prepareLiterals = function([firstChunk, ...restChunks], ...interpolations){
-  return restChunks.reduce(([acc, dataMap], chunk, index) => {
+Template.prototype.prepareLiterals = function([firstChunk, ...restChunks]){
+  return restChunks.reduce((acc, chunk, index) => {
     const keyName = this.generateTokenName(index);
-    dataMap[keyName] = interpolations[index];
-    return [acc.concat(keyName).concat(chunk), dataMap];
-  }, [firstChunk, {}]);
+    return acc.concat(keyName).concat(chunk);
+  }, firstChunk);
 };
 
 Template.prototype.generateTokenName = function(index){
   return `${this.PREFIX}${index}${this.POSTFIX}`;
 };
 
-Template.prototype.replaceTokens = function(text, dataMap = this.dataMap){
-  return text.replace(this.replaceChunkRegex, (token, index) => {
-    return dataMap[token];
+Template.prototype.replaceTokens = function(text, dataMap = this.values){
+  return text.replace(this.replaceChunkRegex, (token, _, index) => {
+    return this.getChunkById(index, dataMap) || '';
   });
 };
 
@@ -372,6 +458,8 @@ export const html = (...args) => (new Template({})).parse(...args);
 
 export const render = (template, target) => template.render(target);
 export const r = (...args) => render(html(...args));
+
+
 
 
 //@TODO think about collecting new nodes to append into fragment and appending the whole fragment later
