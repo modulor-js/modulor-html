@@ -1,4 +1,5 @@
 import uglify from 'rollup-plugin-uglify';
+import babel from 'rollup-plugin-babel';
 
 export default {
   input: 'src/html.js',
@@ -8,6 +9,12 @@ export default {
     name: 'MHTML'
   },
   plugins: [
+    babel({
+      babelrc: false,
+      presets: [
+        ['es2015', { modules: false }],
+      ],
+    }),
     uglify()
   ]
 };
