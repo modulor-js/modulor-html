@@ -351,6 +351,7 @@ Template.prototype.loop = function($source, $target, debug){
             }
             if(type === 'template'){
               $sourceElement.template.render(range);
+              range.update();
               offset += range.childNodes.length + 1;
 
               break;

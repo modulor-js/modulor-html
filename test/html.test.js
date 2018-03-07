@@ -680,6 +680,53 @@ describe('transitions', () => {
     expect($container.innerHTML).toBe(snapshot);
   });
 
+  it('ternary operator 3', () => {
+    const $container = document.createElement('div');
+
+    const tpl = (scope) => html`
+      ${scope.a ? html`
+        ${scope.b ? html`
+          foo
+        ` : void 0}
+        ${scope.c ? html`
+          bar
+        ` : void 0}
+      ` : void 0}
+    `;
+
+    render(tpl({ a: 1, b: 1 }), $container);
+    expect($container.innerHTML).toBe(`foo
+        
+        
+      
+    `);
+
+    render(tpl({ a: 1, c: 1 }), $container);
+    expect($container.innerHTML).toBe(`
+        bar
+        
+    `);
+
+    render(tpl({ a: 1 }), $container);
+    expect($container.innerHTML).toBe(`
+        
+      
+    `);
+
+    render(tpl({ a: 1, c: 1 }), $container);
+    expect($container.innerHTML).toBe(`
+        bar
+        
+      
+    `);
+
+    render(tpl({ a: 1, b: 1 }), $container);
+    expect($container.innerHTML).toBe(`foo
+        
+      
+    `);
+  });
+
   it('updates attributes correctly', () => {
     const container = document.createElement('div');
 
@@ -775,18 +822,33 @@ describe('Range', () => {
     //const container2 = document.createElement('div');
 
     //const tpl = (scope) => html`
-      //<div ref="something" ${'foo'}="asd" class="${scope.a} ${scope.a < 10 ? 'okok' : void 0}  ${scope.a < 10 ? 'foobaz' : ''} test foo-${scope.b}" foo="${scope.a}" bla-${scope.c}-${scope.a}="ok-${scope.d}">${scope.b}</div>
+      //${scope.a ? html`
+        //${scope.b ? html`
+          //foo
+        //` : void 0}
+        //${scope.c ? html`
+          //bar
+        //` : void 0}
+      //` : void 0}
     //`;
 
-    //const tpl2 = (scope) => html`
-      //<span bla="${scope.a}">${scope.b}</div>
-    //`;
+    ////const tpl2 = (scope) => html`
+      ////<span bla="${scope.a}">${scope.b}</div>
+    ////`;
 
-    //const rr = tpl2({ a: 1, b: 2 });
+    ////const rr = tpl2({ a: 1});
 
-    //render(tpl({ a: 1, b: 2, c: 3, d: 4 }), container);
-    //container.querySelector('[ref="something"]').classList.add('foo')
-    //render(tpl({ a: 10, b: 20, c: 30, d: 40 }), container);
+    //render(tpl({ a: 1, b: 1 }), container);
+    //console.log(container.innerHTML);
+    //render(tpl({ a: 1, c: 1 }), container);
+    //console.log(container.innerHTML);
+    //render(tpl({ a: 1 }), container);
+    //console.log(container.innerHTML);
+    //render(tpl({ a: 1, c: 1 }), container);
+    //console.log(container.innerHTML);
+    //render(tpl({ a: 1, b: 1 }), container);
+    ////container.querySelector('[ref="something"]').classList.add('foo')
+    ////render(tpl({ a: 10, b: 20, c: 30, d: 40 }), container);
     ////render(tpl({ a: 1, b: 2, c: 3, d: 4 }), container);
     ////render(tpl({ a: 2, b: 3 }), container);
     ////render(rr, container);
