@@ -380,6 +380,11 @@ Template.prototype.loop = function($source, $target, debug){
 
           break;
       }
+
+      if($target instanceof NodesRange){
+        $target.update();
+      }
+
       continue;
     }
 

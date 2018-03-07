@@ -691,6 +691,7 @@ describe('transitions', () => {
         ${scope.c ? html`
           bar
         ` : void 0}
+        baz
       ` : void 0}
     `;
 
@@ -698,6 +699,7 @@ describe('transitions', () => {
     expect($container.innerHTML).toBe(`foo
         
         
+        baz
       
     `);
 
@@ -705,11 +707,14 @@ describe('transitions', () => {
     expect($container.innerHTML).toBe(`
         bar
         
+        baz
+      
     `);
 
     render(tpl({ a: 1 }), $container);
     expect($container.innerHTML).toBe(`
         
+        baz
       
     `);
 
@@ -717,12 +722,15 @@ describe('transitions', () => {
     expect($container.innerHTML).toBe(`
         bar
         
+        baz
       
     `);
 
     render(tpl({ a: 1, b: 1 }), $container);
     expect($container.innerHTML).toBe(`foo
         
+        
+        baz
       
     `);
   });
@@ -829,6 +837,7 @@ describe('Range', () => {
         //${scope.c ? html`
           //bar
         //` : void 0}
+        //baz
       //` : void 0}
     //`;
 
@@ -842,11 +851,11 @@ describe('Range', () => {
     //console.log(container.innerHTML);
     //render(tpl({ a: 1, c: 1 }), container);
     //console.log(container.innerHTML);
-    //render(tpl({ a: 1 }), container);
-    //console.log(container.innerHTML);
-    //render(tpl({ a: 1, c: 1 }), container);
-    //console.log(container.innerHTML);
-    //render(tpl({ a: 1, b: 1 }), container);
+    ////render(tpl({ a: 1 }), container);
+    ////console.log(container.innerHTML);
+    ////render(tpl({ a: 1, c: 1 }), container);
+    ////console.log(container.innerHTML);
+    ////render(tpl({ a: 1, b: 1 }), container);
     ////container.querySelector('[ref="something"]').classList.add('foo')
     ////render(tpl({ a: 10, b: 20, c: 30, d: 40 }), container);
     ////render(tpl({ a: 1, b: 2, c: 3, d: 4 }), container);
@@ -857,7 +866,7 @@ describe('Range', () => {
     ////render(tpl2({ a: 5, b: 6 }), container);
     ////render(tpl({ a: 1, b: 2 }), container);
 
-    //console.log(container.innerHTML);
+    ////console.log(container.innerHTML);
     ////for (var value of containersMap.values()) {
       ////console.log(value);
     ////}
