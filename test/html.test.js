@@ -293,7 +293,6 @@ describe('processing', () => {
       POSTFIX: '}',
     });
 
-    _html.prevValues = [];
     _html.values = data;
 
     _html.copyAttributes(target, source);
@@ -477,25 +476,13 @@ describe('transitions', () => {
     expect(container.innerHTML).toBe(snapshot1);
     expect(constructorSpy).toHaveBeenCalledTimes(2);
     expect(setterSpy).toHaveBeenCalledTimes(2);
-    expect(setterSpy).toHaveBeenCalledWith('value1');
-    expect(setterSpy).toHaveBeenCalledWith('value2');
 
     constructorSpy.mockReset();
     setterSpy.mockReset();
     render(tplF(['value1', 'value2', 'value3']), container);
     expect(container.innerHTML).toBe(snapshot2);
     expect(constructorSpy).toHaveBeenCalledTimes(1);
-    expect(setterSpy).toHaveBeenCalledTimes(1);
-    expect(setterSpy).toHaveBeenCalledWith('value3');
-
-    constructorSpy.mockReset();
-    setterSpy.mockReset();
-    render(tplF(['value10', 'value20', 'value3']), container);
-    expect(container.innerHTML).toBe(snapshot2);
-    expect(constructorSpy).not.toHaveBeenCalled();
-    expect(setterSpy).toHaveBeenCalledTimes(2);
-    expect(setterSpy).toHaveBeenCalledWith('value10');
-    expect(setterSpy).toHaveBeenCalledWith('value20');
+    expect(setterSpy).toHaveBeenCalledTimes(3);
   });
 
   it('components through promise', async () => {
@@ -542,8 +529,6 @@ describe('transitions', () => {
     expect(container.innerHTML).toBe(snapshot1);
     expect(constructorSpy).toHaveBeenCalledTimes(2);
     expect(setterSpy).toHaveBeenCalledTimes(2);
-    expect(setterSpy).toHaveBeenCalledWith('value1');
-    expect(setterSpy).toHaveBeenCalledWith('value2');
 
     constructorSpy.mockReset();
     setterSpy.mockReset();
@@ -553,19 +538,7 @@ describe('transitions', () => {
 
     expect(container.innerHTML).toBe(snapshot2);
     expect(constructorSpy).toHaveBeenCalledTimes(1);
-    expect(setterSpy).toHaveBeenCalledWith('value3');
-
-    constructorSpy.mockReset();
-    setterSpy.mockReset();
-    render(tplF(['value10', 'value20', 'value3']), container);
-
-    await new Promise(resolve => setTimeout(resolve, 1));
-
-    expect(container.innerHTML).toBe(snapshot2);
-    expect(constructorSpy).not.toHaveBeenCalled();
-    expect(setterSpy).toHaveBeenCalledTimes(2);
-    expect(setterSpy).toHaveBeenCalledWith('value10');
-    expect(setterSpy).toHaveBeenCalledWith('value20');
+    expect(setterSpy).toHaveBeenCalledTimes(3);
   });
 
   it('stopNode handling', () => {

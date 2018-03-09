@@ -228,10 +228,6 @@ Template.prototype.copyAttributes = function(target, source){
       const preparedValue = matchValue ? this.getChunkById(matchValue[2]) : this.replaceTokens(value);
       const preparedPrevValue = matchValue ? this.getChunkById(matchValue[2], this.prevValues) : this.replaceTokens(value, this.prevValues);
 
-      if(preparedName === preparedPrevName && preparedValue === preparedPrevValue){
-        return;
-      }
-
       if(preparedName !== preparedPrevName){
         target.removeAttribute(preparedPrevName);
       }
