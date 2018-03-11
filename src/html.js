@@ -61,11 +61,11 @@ function regExpEscape(literalString){
 function getChunkType(chunk){
   if(chunk instanceof Node){
     return 'element';
-  } else if(chunk instanceof Promise){
-    return 'futureResult';
   } else if(chunk instanceof Template){
     return 'template';
-  } else if(chunk instanceof Function){
+  } else if(typeof chunk == 'object' && typeof chunk.then == 'function'){
+    return 'futureResult';
+  } else if(typeof chunk == 'function'){
     return 'function';
   }
   return 'text';
