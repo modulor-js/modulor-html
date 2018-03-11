@@ -361,11 +361,13 @@ Template.prototype.loop = function($source, $target, debug){
               break;
             }
             if(type === 'element'){
-              const $frag = document.createDocumentFragment();
-              $frag.appendChild($sourceElement.element);
+              if($sourceElement.element instanceof DocumentFragment || range.childNodes.length !== 1){
+                range.childNodes.forEach(node => range.removeChild(node));
+                range.appendChild($sourceElement.element);
+              } else if(range.childNodes[0] !== $sourceElement.element){
+                range.replaceChild($sourceElement.element, range.childNodes[0]);
+              }
 
-              //@TODO probably better to simply replace elements in range with ones from $frag
-              this.loop($frag, range);
               offset += range.childNodes.length + 1;
 
               break;

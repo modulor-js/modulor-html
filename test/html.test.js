@@ -568,6 +568,41 @@ describe('transitions', () => {
     expect(setterSpy).toHaveBeenCalledWith('value20');
   });
 
+  it('elements', () => {
+
+    const container = document.createElement('div');
+
+    const element = document.createElement('div');
+    element.id = 'my-element';
+
+    const tpl = (scope) => html`
+      <div>
+        <span class="foo"></span>
+        ${scope.element}
+        <span class="bar"></span>
+      </div>
+    `;
+
+    const snapshot1 = (scope) => `<div>
+        <span class="foo"></span>
+        ${scope.element.outerHTML}
+        <span class="bar"></span>
+      </div>
+    `;
+
+    render(tpl({ element }), container);
+
+    expect(container.innerHTML).toBe(snapshot1({ element }));
+    expect(container.contains(element)).toBe(true);
+    expect(container.querySelector('#my-element')).toBe(element);
+
+    render(tpl({ element }), container);
+
+    expect(container.innerHTML).toBe(snapshot1({ element }));
+    expect(container.contains(element)).toBe(true);
+    expect(container.querySelector('#my-element')).toBe(element);
+  });
+
   it('stopNode handling', () => {
 
     const container = document.createElement('div');
