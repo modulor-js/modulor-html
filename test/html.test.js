@@ -293,6 +293,7 @@ describe('processing', () => {
       POSTFIX: '}',
     });
 
+    _html.prevValues = [];
     _html.values = data;
 
     _html.copyAttributes(target, source);
@@ -476,13 +477,25 @@ describe('transitions', () => {
     expect(container.innerHTML).toBe(snapshot1);
     expect(constructorSpy).toHaveBeenCalledTimes(2);
     expect(setterSpy).toHaveBeenCalledTimes(2);
+    expect(setterSpy).toHaveBeenCalledWith('value1');
+    expect(setterSpy).toHaveBeenCalledWith('value2');
 
     constructorSpy.mockReset();
     setterSpy.mockReset();
     render(tplF(['value1', 'value2', 'value3']), container);
     expect(container.innerHTML).toBe(snapshot2);
     expect(constructorSpy).toHaveBeenCalledTimes(1);
-    expect(setterSpy).toHaveBeenCalledTimes(3);
+    expect(setterSpy).toHaveBeenCalledTimes(1);
+    expect(setterSpy).toHaveBeenCalledWith('value3');
+
+    constructorSpy.mockReset();
+    setterSpy.mockReset();
+    render(tplF(['value10', 'value20', 'value3']), container);
+    expect(container.innerHTML).toBe(snapshot2);
+    expect(constructorSpy).not.toHaveBeenCalled();
+    expect(setterSpy).toHaveBeenCalledTimes(2);
+    expect(setterSpy).toHaveBeenCalledWith('value10');
+    expect(setterSpy).toHaveBeenCalledWith('value20');
   });
 
   it('components through promise', async () => {
@@ -529,6 +542,8 @@ describe('transitions', () => {
     expect(container.innerHTML).toBe(snapshot1);
     expect(constructorSpy).toHaveBeenCalledTimes(2);
     expect(setterSpy).toHaveBeenCalledTimes(2);
+    expect(setterSpy).toHaveBeenCalledWith('value1');
+    expect(setterSpy).toHaveBeenCalledWith('value2');
 
     constructorSpy.mockReset();
     setterSpy.mockReset();
@@ -538,7 +553,54 @@ describe('transitions', () => {
 
     expect(container.innerHTML).toBe(snapshot2);
     expect(constructorSpy).toHaveBeenCalledTimes(1);
-    expect(setterSpy).toHaveBeenCalledTimes(3);
+    expect(setterSpy).toHaveBeenCalledWith('value3');
+
+    constructorSpy.mockReset();
+    setterSpy.mockReset();
+    render(tplF(['value10', 'value20', 'value3']), container);
+
+    await new Promise(resolve => setTimeout(resolve, 1));
+
+    expect(container.innerHTML).toBe(snapshot2);
+    expect(constructorSpy).not.toHaveBeenCalled();
+    expect(setterSpy).toHaveBeenCalledTimes(2);
+    expect(setterSpy).toHaveBeenCalledWith('value10');
+    expect(setterSpy).toHaveBeenCalledWith('value20');
+  });
+
+  it('elements', () => {
+
+    const container = document.createElement('div');
+
+    const element = document.createElement('div');
+    element.id = 'my-element';
+
+    const tpl = (scope) => html`
+      <div>
+        <span class="foo"></span>
+        ${scope.element}
+        <span class="bar"></span>
+      </div>
+    `;
+
+    const snapshot1 = (scope) => `<div>
+        <span class="foo"></span>
+        ${scope.element.outerHTML}
+        <span class="bar"></span>
+      </div>
+    `;
+
+    render(tpl({ element }), container);
+
+    expect(container.innerHTML).toBe(snapshot1({ element }));
+    expect(container.contains(element)).toBe(true);
+    expect(container.querySelector('#my-element')).toBe(element);
+
+    render(tpl({ element }), container);
+
+    expect(container.innerHTML).toBe(snapshot1({ element }));
+    expect(container.contains(element)).toBe(true);
+    expect(container.querySelector('#my-element')).toBe(element);
   });
 
   it('stopNode handling', () => {

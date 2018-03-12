@@ -61,11 +61,11 @@ function regExpEscape(literalString){
 function getChunkType(chunk){
   if(chunk instanceof Node){
     return 'element';
-  } else if(chunk instanceof Promise){
-    return 'futureResult';
   } else if(chunk instanceof Template){
     return 'template';
-  } else if(chunk instanceof Function){
+  } else if(typeof chunk == 'object' && typeof chunk.then == 'function'){
+    return 'futureResult';
+  } else if(typeof chunk == 'function'){
     return 'function';
   }
   return 'text';
@@ -228,6 +228,10 @@ Template.prototype.copyAttributes = function(target, source){
       const preparedValue = matchValue ? this.getChunkById(matchValue[2]) : this.replaceTokens(value);
       const preparedPrevValue = matchValue ? this.getChunkById(matchValue[2], this.prevValues) : this.replaceTokens(value, this.prevValues);
 
+      if(preparedName === preparedPrevName && preparedValue === preparedPrevValue){
+        return;
+      }
+
       if(preparedName !== preparedPrevName){
         target.removeAttribute(preparedPrevName);
       }
@@ -357,11 +361,13 @@ Template.prototype.loop = function($source, $target, debug){
               break;
             }
             if(type === 'element'){
-              const $frag = document.createDocumentFragment();
-              $frag.appendChild($sourceElement.element);
+              if($sourceElement.element instanceof DocumentFragment || range.childNodes.length !== 1){
+                range.childNodes.forEach(node => range.removeChild(node));
+                range.appendChild($sourceElement.element);
+              } else if(range.childNodes[0] !== $sourceElement.element){
+                range.replaceChild($sourceElement.element, range.childNodes[0]);
+              }
 
-              //@TODO probably better to simply replace elements in range with ones from $frag
-              this.loop($frag, range);
               offset += range.childNodes.length + 1;
 
               break;
