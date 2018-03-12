@@ -63,7 +63,7 @@ function getChunkType(chunk){
     return 'element';
   } else if(chunk instanceof Template){
     return 'template';
-  } else if(typeof chunk == 'object' && !!chunk.then && typeof chunk.then == 'function'){
+  } else if(chunk instanceof Promise){
     return 'futureResult';
   } else if(typeof chunk == 'function'){
     return 'function';
