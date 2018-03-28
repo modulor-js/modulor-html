@@ -74,7 +74,7 @@ function getChunkType(chunk){
 }
 
 function setAttribute($target, attributeName, attributeValue, originalValue){
-  if(originalValue !== '' && attributeName in $target){
+  if(originalValue !== '' && attributeName !== 'style' && attributeName in $target){
     $target[attributeName] = attributeValue;
     return;
   }
