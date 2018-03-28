@@ -344,7 +344,7 @@ describe('processing', () => {
       expect(target.hasAttribute('test-data')).toBe(false);
     });
 
-    it('foo', () => {
+    it('updates attributes correctly', () => {
 
       const newData = [
         'foo value',
@@ -374,6 +374,36 @@ describe('processing', () => {
 
       expect(target.getAttribute(`attr-${data[12]}`)).toBe(null);
       expect(target.getAttribute(`attr-${newData[12]}`)).toBe('test');
+    });
+
+    it('copies style attribute correctly', () => {
+      const element = document.createElement('div');
+      element.innerHTML = `
+        <input style="display: {modulor_html_chunk:0};"/>
+      `;
+
+      const source = element.querySelector('input');
+
+      const target = document.createElement('input');
+
+      const spy = jest.spyOn(target, 'setAttribute');
+
+      const data = [
+        'block',
+      ];
+
+      const _html = new Template({
+        PREFIX: '{modulor_html_chunk:',
+        POSTFIX: '}',
+      });
+
+      _html.prevValues = [];
+      _html.values = data;
+
+      _html.copyAttributes(target, source);
+
+      expect(target.getAttribute('style')).toBe('display: block;');
+      expect(spy).toHaveBeenCalledWith('style', 'display: block;');
     });
   });
 
