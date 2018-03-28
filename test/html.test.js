@@ -889,18 +889,10 @@ describe('Range', () => {
   //it.only('bla', async () => {
 
     //const container = document.createElement('div');
-    //const container2 = document.createElement('div');
+    ////const container2 = document.createElement('div');
 
     //const tpl = (scope) => html`
-      //${scope.a ? html`
-        //${scope.b ? html`
-          //foo
-        //` : void 0}
-        //${scope.c ? html`
-          //bar
-        //` : void 0}
-        //baz
-      //` : void 0}
+      //${html`foo`}
     //`;
 
     ////const tpl2 = (scope) => html`
@@ -909,10 +901,12 @@ describe('Range', () => {
 
     ////const rr = tpl2({ a: 1});
 
-    //render(tpl({ a: 1, b: 1 }), container);
+    //render(tpl({ a: 'test' }), container);
     //console.log(container.innerHTML);
-    //render(tpl({ a: 1, c: 1 }), container);
+    //render(tpl({ a: 'test' }), container);
     //console.log(container.innerHTML);
+    ////render(tpl({ a: 1, c: 1 }), container);
+    ////console.log(container.innerHTML);
     ////render(tpl({ a: 1 }), container);
     ////console.log(container.innerHTML);
     ////render(tpl({ a: 1, c: 1 }), container);

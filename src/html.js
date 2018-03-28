@@ -3,6 +3,10 @@ import { NodesRange } from './range';
 const templatesCache = {};
 
 const NODE_TYPES = {
+  TEMPLATE_NODE: -1,
+  TEXT_RESULT_NODE: -2,
+  PROMISE_NODE: -3,
+  ELEMENT_RESULT_NODE: -4,
   ELEMENT_NODE: 1,
   ATTRIBUTE_NODE: 2,
   TEXT_NODE: 3,
@@ -16,8 +20,6 @@ const NODE_TYPES = {
   DOCUMENT_FRAGMENT_NODE: 11,
   NOTATION_NODE: 12
 };
-
-const ITERATIONS_THRESHOLD = 1000;
 
 function same(nodeA, nodeB, sanitizeNodePrefix = ''){
   if(!nodeA || !nodeB){
@@ -144,39 +146,37 @@ Template.prototype.processTextNodeChunks = function(chunks){
     const match = chunk.match(this.matchChunkRegex);
     const value = match ? this.getChunkById(match[2]) : chunk;
     if(typeof value === 'undefined'){ return acc; }
-    const chunkType = getChunkType(value);
-    if(chunkType !== 'text'){
-      const $el = document.createComment(``);
-      $el.isSpecialChunk = true;
-      $el[chunkType] = value;
-      $el.chunkType = chunkType;
-      $el.templateId = this.templateId;
-      $el.chunkId = match[2];
-      return acc.concat($el);
-    }
     return acc.concat(value);
   }, []);
 };
 
-Template.prototype.copyTextNodeChunks = function(chunks, container = document.createDocumentFragment()){
-  return [].concat(chunks).reduce((container, chunk) => {
-    if(chunk.isSpecialChunk){
-      container.appendChild(chunk);
-      return container;
-    }
-    const chunkType = getChunkType(chunk);
-    if(chunkType === 'text'){
-      container.appendChild(document.createTextNode(chunk));
-    } else {
-      const $el = document.createComment(``);
+Template.prototype.copyTextNodeChunks = function(chunks){
+  const container = {
+    childNodes: [].concat(chunks).map((chunk) => {
+      const chunkType = getChunkType(chunk);
+
+      if(chunkType === 'text'){
+        return document.createTextNode(chunk);
+      }
+
+      const $el = {};
+
+      if(chunkType === 'element'){
+        $el.nodeType = NODE_TYPES.ELEMENT_RESULT_NODE;
+      }
+      if(chunkType === 'template'){
+        $el.nodeType = NODE_TYPES.TEMPLATE_NODE;
+      }
+      if(chunkType === 'futureResult'){
+        $el.nodeType = NODE_TYPES.PROMISE_NODE;
+      }
+
       $el[chunkType] = chunk;
-      $el.isSpecialChunk = true;
-      $el.chunkType = chunkType;
       $el.templateId = this.templateId;
-      container.appendChild($el);
-    }
-    return container;
-  }, container);
+      return $el;
+    })
+  };
+  return container;
 };
 
 Template.prototype.copyAttributes = function(target, source){
@@ -267,17 +267,12 @@ Template.prototype.copyAttributes = function(target, source){
   return updates;
 };
 
-Template.prototype.loop = function($source, $target, debug){
+Template.prototype.loop = function($source, $target){
 
   for(let i = 0, offset = 0;; i++){
 
-    if(i > ITERATIONS_THRESHOLD){
-      console.log('too much recursion');
-      break;
-    }
-
     const $sourceElement = $source.childNodes[i];
-    const $targetElement = $target.childNodes[i + offset]; //probably offset is not needed
+    const $targetElement = $target.childNodes[i + offset];
 
     //no further elements, end of loop
     if(!$sourceElement && !$targetElement){
@@ -318,61 +313,27 @@ Template.prototype.loop = function($source, $target, debug){
       }
       switch($sourceElement.nodeType){
         case NODE_TYPES.TEXT_NODE:
-          const content = $sourceElement.textContent;
-          const chunks = content.split(this.splitChunkRegex);
+          {
+            const content = $sourceElement.textContent;
+            const chunks = content.split(this.splitChunkRegex);
 
-          if(chunks.length === 1){
-            domFn(document.createTextNode($sourceElement.textContent));
+            if(chunks.length === 1){
+              domFn(document.createTextNode($sourceElement.textContent));
+              break;
+            }
+
+            let range = getRange($targetElement, 'textContent');
+            const updateFn = () => {
+              const processedChunks = this.processTextNodeChunks(chunks);
+              const $processedChunksFragment = this.copyTextNodeChunks(processedChunks);
+              this.loop($processedChunksFragment, range);
+            }
+            this.updates.push(updateFn);
+            updateFn();
+            offset += range.childNodes.length + 1;
             break;
           }
-
-          let range = getRange($targetElement, 'textContent');
-          const updateFn = () => {
-            const processedChunks = this.processTextNodeChunks(chunks);
-            const $processedChunksFragment = this.copyTextNodeChunks(processedChunks);
-            this.loop($processedChunksFragment, range);
-          }
-          this.updates.push(updateFn);
-          updateFn();
-          offset += range.childNodes.length + 1;
-          break;
         case NODE_TYPES.COMMENT_NODE:
-          if($sourceElement.isSpecialChunk){
-            const type = $sourceElement.chunkType;
-            const range = getRange($targetElement, type);
-
-            if(type === 'futureResult'){
-              range.update();
-              $sourceElement.futureResult.then((response) => {
-                range.update();
-                const $frag = this.copyTextNodeChunks(response);
-                this.loop($frag, range);
-                return $frag;
-              });
-              offset += range.childNodes.length + 1;
-
-              break;
-            }
-            if(type === 'template'){
-              $sourceElement.template.render(range);
-              range.update();
-              offset += range.childNodes.length + 1;
-
-              break;
-            }
-            if(type === 'element'){
-              if($sourceElement.element instanceof DocumentFragment || range.childNodes.length !== 1){
-                range.childNodes.forEach(node => range.removeChild(node));
-                range.appendChild($sourceElement.element);
-              } else if(range.childNodes[0] !== $sourceElement.element){
-                range.replaceChild($sourceElement.element, range.childNodes[0]);
-              }
-
-              offset += range.childNodes.length + 1;
-
-              break;
-            }
-          }
           domFn(document.createComment(this.replaceTokens($sourceElement.textContent)));
           break;
         case NODE_TYPES.ELEMENT_NODE:
@@ -385,6 +346,45 @@ Template.prototype.loop = function($source, $target, debug){
           this.updates = this.updates.concat(updates);
 
           break;
+
+        case NODE_TYPES.TEMPLATE_NODE:
+          {
+            const range = getRange($targetElement, 'template');
+
+            $sourceElement.template.render(range);
+            range.update();
+            offset += range.childNodes.length + 1;
+
+            break;
+          }
+        case NODE_TYPES.PROMISE_NODE:
+          {
+            const range = getRange($targetElement, 'futureResult');
+            range.update();
+            $sourceElement.futureResult.then((response) => {
+              range.update();
+              const $frag = this.copyTextNodeChunks(response);
+              this.loop($frag, range);
+              return $frag;
+            });
+            offset += range.childNodes.length + 1;
+
+            break;
+          }
+        case NODE_TYPES.ELEMENT_RESULT_NODE:
+          {
+            const range = getRange($targetElement, 'element');
+            if($sourceElement.element instanceof DocumentFragment || range.childNodes.length !== 1){
+              range.childNodes.forEach(node => range.removeChild(node));
+              range.appendChild($sourceElement.element);
+            } else if(range.childNodes[0] !== $sourceElement.element){
+              range.replaceChild($sourceElement.element, range.childNodes[0]);
+            }
+
+            offset += range.childNodes.length + 1;
+
+            break;
+          }
       }
 
       if($target instanceof NodesRange){
@@ -475,4 +475,3 @@ export const r = (...args) => render(html(...args));
 
 
 //@TODO think about collecting new nodes to append into fragment and appending the whole fragment later
-//@TODO maybe converting special nodes to comment and then replacing it is not good idea?
