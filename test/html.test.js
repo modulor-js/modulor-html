@@ -877,6 +877,36 @@ describe('transitions', () => {
     expect(container.innerHTML).toBe(snapshot3);
   });
 
+  it('updates classes correctly 2', () => {
+    const container = document.createElement('div');
+
+    const tpl = (scope) => html`
+      ${scope.a.map((item, index) => html`
+        <div class="foo foo-${index} bar-${item}"></div>
+      `)}
+    `;
+
+    const data1 = { a: [1, 2, 3] };
+    const snapshot1 = `<div class="foo foo-0 bar-1"></div>
+      <div class="foo foo-1 bar-2"></div>
+      <div class="foo foo-2 bar-3"></div>
+      
+    `;
+
+    render(tpl(data1), container);
+    expect(container.innerHTML).toBe(snapshot1);
+
+    const data2 = { a: [5, false, 3] };
+    const snapshot2 = `<div class="foo foo-0 bar-5"></div>
+      <div class="foo foo-1 bar-false"></div>
+      <div class="foo foo-2 bar-3"></div>
+      
+    `;
+
+    render(tpl(data2), container);
+    expect(container.innerHTML).toBe(snapshot2);
+  });
+
 });
 
 
@@ -922,7 +952,9 @@ describe('Range', () => {
     ////const container2 = document.createElement('div');
 
     //const tpl = (scope) => html`
-      //${html`foo`}
+      //${scope.a.map((item, index) => html`
+        //<span class="foo foo-${index} bar-${item}">${item}</span>
+      //`)}
     //`;
 
     ////const tpl2 = (scope) => html`
@@ -931,9 +963,9 @@ describe('Range', () => {
 
     ////const rr = tpl2({ a: 1});
 
-    //render(tpl({ a: 'test' }), container);
+    //render(tpl({ a: [1,2,3] }), container);
     //console.log(container.innerHTML);
-    //render(tpl({ a: 'test' }), container);
+    //render(tpl({ a: [3,4,5] }), container);
     //console.log(container.innerHTML);
     ////render(tpl({ a: 1, c: 1 }), container);
     ////console.log(container.innerHTML);

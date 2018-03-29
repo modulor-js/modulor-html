@@ -46,6 +46,10 @@ function isSameTextNode(nodeA, nodeB){
   return false;
 };
 
+function isDefined(value){
+  return typeof value !== 'undefined';
+}
+
 //hash function taken from https://github.com/darkskyapp/string-hash/blob/master/index.js
 function hash(str) {
   var hash = 5381,
@@ -456,7 +460,8 @@ Template.prototype.generateTokenName = function(index){
 
 Template.prototype.replaceTokens = function(text, dataMap = this.values){
   return text.replace(this.replaceChunkRegex, (token, _, index) => {
-    return this.getChunkById(index, dataMap) || '';
+    const chunk = this.getChunkById(index, dataMap);
+    return isDefined(chunk) ? chunk : '';
   });
 };
 
