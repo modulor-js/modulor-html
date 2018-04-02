@@ -412,6 +412,7 @@ describe('processing', () => {
 
 
 describe('transitions', () => {
+
   const tpl = html`
     for ${1} bar
     <div bar="bla">
@@ -424,6 +425,7 @@ describe('transitions', () => {
       <span attr-one="1"></span>
     </div>
   `;
+
   const snapshot1 = `for 1 bar
     <div bar="bla">
       <span attr-one="1"></span>
@@ -444,6 +446,7 @@ describe('transitions', () => {
     `)}
     ${Promise.resolve('ok')}
   `;
+
   const snapshot2 = `foo 1 bar
     <div bar="foo">
       </div>
@@ -464,6 +467,46 @@ describe('transitions', () => {
     await new Promise(resolve => setTimeout(resolve, 1));
 
     expect(container.innerHTML).toBe(snapshot2);
+  });
+
+  it('falsy values', async () => {
+    const container = document.createElement('div');
+
+    const tpl = (scope) => html`
+      ${scope.a}
+      <span>${scope.b}</span>
+      <div>${scope.c}</div>
+    `;
+
+    const snapshot1 = `0
+      <span>false</span>
+      <div></div>
+    `;
+
+    render(tpl({ a: 0, b: false }), container);
+    expect(container.innerHTML).toBe(snapshot1);
+
+    const snapshot2 = `1
+      <span></span>
+      <div>null</div>
+    `;
+
+    render(tpl({ a: 1, c: null }), container);
+    expect(container.innerHTML).toBe(snapshot2);
+
+    const snapshot3 = `
+      <span>test</span>
+      <div>0</div>
+    `;
+
+    render(tpl({ b: 'test', c: 0 }), container);
+    expect(container.innerHTML).toBe(snapshot3);
+
+    //render(tpl2, container);
+
+    //await new Promise(resolve => setTimeout(resolve, 1));
+
+    //expect(container.innerHTML).toBe(snapshot2);
   });
 
   it('components', () => {
@@ -664,16 +707,6 @@ describe('transitions', () => {
     render(tpl, container);
 
     expect(container.innerHTML).toBe(snapshot2);
-
-    //expect(constructorSpy).toHaveBeenCalledTimes(2);
-    //expect(setterSpy).toHaveBeenCalledTimes(2);
-
-    //constructorSpy.mockReset();
-    //setterSpy.mockReset();
-    //render(tplF(['value1', 'value2', 'value3']), container);
-    //expect(container.innerHTML).toBe(snapshot2);
-    //expect(constructorSpy).toHaveBeenCalledTimes(1);
-    //expect(setterSpy).toHaveBeenCalledTimes(3);
   });
 
 
