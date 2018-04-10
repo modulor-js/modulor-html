@@ -50,6 +50,10 @@ function isDefined(value){
   return typeof value !== 'undefined';
 }
 
+function isPromise(obj){
+  return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
+}
+
 //hash function taken from https://github.com/darkskyapp/string-hash/blob/master/index.js
 function hash(str) {
   var hash = 5381,
@@ -69,7 +73,7 @@ function getChunkType(chunk){
     return 'element';
   } else if(chunk instanceof Template){
     return 'template';
-  } else if(chunk instanceof Promise){
+  } else if(isPromise(chunk)){
     return 'futureResult';
   } else if(typeof chunk == 'function'){
     return 'function';
