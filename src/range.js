@@ -1,4 +1,4 @@
-export function NodesRange(startNode, stopNode, startOffset = 0, stopOffset = 0){
+export function NodesRange(startNode = document.createTextNode(''), stopNode = document.createTextNode('')){
 
   //@TODO: should be better here
   this.childNodes = [];

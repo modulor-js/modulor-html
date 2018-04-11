@@ -1,6 +1,11 @@
-import { html, render, r, stopNode, Template, containersMap, createHtml } from '../../src/html';
+import { html, render, r, createHtml } from '../../src/html';
 
 describe('copy attributes', () => {
+
+  const { copyAttributes, processNode } = createHtml({
+    PREFIX: '{modulor_html_chunk:',
+    POSTFIX: '}',
+  });
 
   const spyNoValue = jest.fn();
   const spyWithValue = jest.fn();
@@ -23,7 +28,7 @@ describe('copy attributes', () => {
            attr-{modulor_html_chunk:12}="test"/>
   `;
 
-  const source = element.querySelector('input');
+  const source = processNode(element.querySelector('input'));
 
   const target = document.createElement('input');
   target['test-data'] = {};
@@ -43,11 +48,6 @@ describe('copy attributes', () => {
     Promise.resolve('promise result'),
     'test',
   ];
-
-  const { copyAttributes } = createHtml({
-    PREFIX: '{modulor_html_chunk:',
-    POSTFIX: '}',
-  });
 
   const updates = copyAttributes(target, source);
   updates.forEach(u => u(data, []));
@@ -134,7 +134,7 @@ describe('copy attributes', () => {
       <input style="display: {modulor_html_chunk:0};"/>
     `;
 
-    const source = element.querySelector('input');
+    const source = processNode(element.querySelector('input'));
 
     const target = document.createElement('input');
 
