@@ -44,17 +44,13 @@ describe('copy attributes', () => {
     'test',
   ];
 
-  const _html_ = createHtml({
+  const { copyAttributes } = createHtml({
     PREFIX: '{modulor_html_chunk:',
     POSTFIX: '}',
   });
 
-  const _html = new _html_.Template();
-
-  _html.prevValues = [];
-  _html.values = data;
-
-  _html.copyAttributes(target, source);
+  const updates = copyAttributes(target, source);
+  updates.forEach(u => u(data, []));
 
   it('doesnt loose static attributes', () => {
     expect(target.getAttribute('type')).toBe('checkbox');
@@ -120,10 +116,8 @@ describe('copy attributes', () => {
       'quux',
     ];
 
-    _html.prevValues = data;
-    _html.values = newData;
-
-    _html.copyAttributes(target, source);
+    const updates = copyAttributes(target, source);
+    updates.forEach(u => u(newData, data));
 
     expect(target.getAttribute('checked')).toBe(null);
     expect(target.checked).toBe(false);
@@ -150,17 +144,13 @@ describe('copy attributes', () => {
       'block',
     ];
 
-    const _html_ = createHtml({
+    const { copyAttributes } = createHtml({
       PREFIX: '{modulor_html_chunk:',
       POSTFIX: '}',
     });
 
-    const _html = new _html_.Template();
-
-    _html.prevValues = [];
-    _html.values = data;
-
-    _html.copyAttributes(target, source);
+    const updates = copyAttributes(target, source);
+    updates.forEach(u => u(data, []));
 
     expect(target.getAttribute('style')).toBe('display: block;');
     expect(spy).toHaveBeenCalledWith('style', 'display: block;');

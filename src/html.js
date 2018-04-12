@@ -7,6 +7,7 @@ const NODE_TYPES = {
   TEXT_RESULT_NODE: -2,
   PROMISE_NODE: -3,
   ELEMENT_RESULT_NODE: -4,
+  CHUNK_NODE: -5,
   ELEMENT_NODE: 1,
   ATTRIBUTE_NODE: 2,
   TEXT_NODE: 3,
@@ -21,7 +22,7 @@ const NODE_TYPES = {
   NOTATION_NODE: 12
 };
 
-function same(nodeA, nodeB, sanitizeNodePrefix = ''){
+function same(nodeA, nodeB){
   if(!nodeA || !nodeB){
     return false;
   }
@@ -32,11 +33,11 @@ function same(nodeA, nodeB, sanitizeNodePrefix = ''){
     return false;
   }
   if(nodeA.tagName && nodeB.tagName &&
-    (nodeA.tagName.toLowerCase().replace(sanitizeNodePrefix, '') === nodeB.tagName.toLowerCase())
+    (nodeA.tagName.toLowerCase() === nodeB.tagName.toLowerCase())
   ){
     return true;
   }
-  return nodeA.isEqualNode(nodeB);
+  return false;
 };
 
 function isSameTextNode(nodeA, nodeB){
@@ -89,8 +90,6 @@ function setAttribute($target, attributeName, attributeValue){
   $target.setAttribute(attributeName, attributeValue);
 }
 
-const stopNodeValue = `modulor_stop_node_${+(new Date())}`;
-
 /**
  *  stopNode directive
  *  @deprecated
@@ -134,17 +133,51 @@ export function createHtml(options = {}){
     });
   };
 
-  function processTextNodeChunks(chunks = []){
-    return {
-      childNodes: chunks.map((chunk) => ({
-        nodeType: NODE_TYPES.TEXT_RESULT_NODE,
-        textContent: chunk
-      }))
+  function processNode($container){
+    const nodeCopy = {
+      nodeType: $container.nodeType,
+      textContent: $container.textContent,
+      attributes: [],
+      childNodes: []
     };
-  };
+
+    if($container.tagName){
+      nodeCopy.tagName = $container.tagName.toLowerCase().replace(sanitizeNodePrefix, '').toUpperCase();
+    }
+
+    const childNodes = $container.childNodes || [];
+    for(let i = 0; i < childNodes.length; i++){
+      if(childNodes[i].nodeType === NODE_TYPES.TEXT_NODE){
+        const chunks = childNodes[i].textContent.split(splitChunkRegex);
+        chunks.filter(chunk => !!chunk).forEach((chunk) => {
+          const match = chunk.match(matchChunkRegex);
+          if(match){
+            nodeCopy.childNodes.push({
+              nodeType: NODE_TYPES.CHUNK_NODE,
+              matchIndex: match[2]
+            });
+          } else {
+            nodeCopy.childNodes.push({
+              nodeType: NODE_TYPES.TEXT_RESULT_NODE,
+              textContent: chunk,
+            });
+          }
+        });
+        continue;
+      }
+      nodeCopy.childNodes.push(processNode(childNodes[i]));
+    }
+
+    const childAttributes = $container.attributes || [];
+    for(let j = 0; j < childAttributes.length; j++){
+      const { name, value }  = childAttributes[j];
+      nodeCopy.attributes.push({ name, value });
+    }
+    return nodeCopy;
+  }
 
   function generateContainer(markup){
-    return parser.parseFromString(markup, "text/html").body;
+    return processNode(parser.parseFromString(markup, "text/html").body);
   };
 
   function generateTokenName(index){
@@ -201,59 +234,7 @@ export function createHtml(options = {}){
     return container;
   };
 
-  function html(...args){
-    return new Template(...args);
-  }
-
-  function render(template, target){
-    return template.render(target);
-  }
-
-  function Template(chunks = [], ...interpolations){
-    this.prevValues = [];
-    this.values = interpolations;
-
-    this.template = prepareLiterals(chunks);
-
-    if(!this.template){
-      return this;
-    }
-
-    this.templateId = hash(this.template);
-    const cached = templatesCache[this.templateId];
-
-    if(!isDefined(cached)){
-      this.container = generateContainer(sanitize(this.template));
-      templatesCache[this.templateId] = this.container;
-    } else {
-      this.container = cached;
-    }
-
-    this.updates = [];
-
-    return this;
-  };
-
-  Template.prototype.render = function(target = document.createDocumentFragment()){
-    const cached = containersMap.get(target);
-    if((cached || {}).templateId === this.templateId){
-      cached.update(this.values);
-      return;
-    }
-    containersMap.set(target, {
-      templateId: this.templateId,
-      update: this.update.bind(this),
-    });
-    return this.loop(this.container, target);
-  };
-
-  Template.prototype.update = function(newData){
-    this.prevValues = this.values;
-    this.values = newData;
-    this.updates.forEach(u => u());
-  };
-
-  Template.prototype.copyAttributes = function(target, source){
+  function copyAttributes(target, source){
     const sourceAttributes = source.attributes;
     const targetAttributes = target.attributes;
 
@@ -279,9 +260,9 @@ export function createHtml(options = {}){
             target.classList.add(className);
             return;
           }
-          updates.push(() => {
-            const newValue = replaceTokens(className, this.values);
-            const oldValue = replaceTokens(className, this.prevValues);
+          updates.push((values, prevValues) => {
+            const newValue = replaceTokens(className, values);
+            const oldValue = replaceTokens(className, prevValues);
             if(oldValue !== newValue){
               oldValue && target.classList.remove(oldValue);
               newValue && target.classList.add(newValue);
@@ -295,12 +276,12 @@ export function createHtml(options = {}){
       const matchName = name.match(matchChunkRegex);
       const matchValue = value.match(matchChunkRegex);
 
-      updates.push(() => {
-        const preparedName = matchName ? getChunkById(matchName[2], this.values) : replaceTokens(name, this.values);
-        const preparedPrevName = matchName ? getChunkById(matchName[2], this.prevValues) : replaceTokens(name, this.prevValues);
+      updates.push((values, prevValues) => {
+        const preparedName = matchName ? getChunkById(matchName[2], values) : replaceTokens(name, values);
+        const preparedPrevName = matchName ? getChunkById(matchName[2], prevValues) : replaceTokens(name, prevValues);
 
-        const preparedValue = matchValue ? getChunkById(matchValue[2], this.values) : replaceTokens(value, this.values);
-        const preparedPrevValue = matchValue ? getChunkById(matchValue[2], this.prevValues) : replaceTokens(value, this.prevValues);
+        const preparedValue = matchValue ? getChunkById(matchValue[2], values) : replaceTokens(value, values);
+        const preparedPrevValue = matchValue ? getChunkById(matchValue[2], prevValues) : replaceTokens(value, prevValues);
 
         if(preparedName === preparedPrevName && preparedValue === preparedPrevValue){
           return;
@@ -336,21 +317,21 @@ export function createHtml(options = {}){
       }
     }
 
-    updates.forEach(u => u());
-
     return updates;
-  };
+  }
 
-  Template.prototype.loop = function($source, $target){
+  function morph($source, $target, options = {}){
 
-    const $tempFragment = document.createDocumentFragment();
+    let updates = [];
+
+    const $currentTarget = options.useDocFragment ? document.createDocumentFragment() : $target;
 
     const sourceChildren = $source.childNodes;
 
     const getDomFn = ($targetElement) => {
       if(!$targetElement){
         //element should be newly created
-        return ($el) => $tempFragment.appendChild($el);
+        return ($el) => $currentTarget.appendChild($el);
       }
       //replace old node with new one
       return ($el) => $target.replaceChild($el, $targetElement);
@@ -363,7 +344,6 @@ export function createHtml(options = {}){
 
       //no further elements, end of loop
       if(!$sourceElement && !$targetElement){
-        $target.appendChild($tempFragment);
         break;
       }
 
@@ -374,7 +354,7 @@ export function createHtml(options = {}){
         continue;
       }
 
-      if(!$targetElement || !same($sourceElement, $targetElement, sanitizeNodePrefix)){
+      if(!$targetElement || !same($sourceElement, $targetElement)){
         const domFn = getDomFn($targetElement);
         const getRange = ($targetElement, replacementType) => {
 
@@ -391,54 +371,50 @@ export function createHtml(options = {}){
         }
         switch($sourceElement.nodeType){
           //regular DOM nodes
-          case NODE_TYPES.TEXT_NODE:
-            {
-              const content = $sourceElement.textContent;
-              const chunks = content.split(splitChunkRegex);
-
-              const range = getRange($targetElement, 'textContent');
-              const processedChunks = processTextNodeChunks(chunks);
-              this.loop(processedChunks, range);
-              offset += range.childNodes.length + 1;
-              break;
-            }
           case NODE_TYPES.COMMENT_NODE:
-            domFn(document.createComment(replaceTokens($sourceElement.textContent, this.values)));
+            const $element = document.createComment('');
+            const content = $sourceElement.textContent;
+            domFn($element);
+            updates.push((values, prevValues) => {
+              $element.textContent = replaceTokens(content, values);
+            });
             break;
           case NODE_TYPES.ELEMENT_NODE:
-            const newChild = document.createElement($sourceElement.tagName.toLowerCase().replace(sanitizeNodePrefix, ''));
+            const newChild = document.createElement($sourceElement.tagName.toLowerCase());
 
-            this.loop($sourceElement, newChild);
+            updates = updates
+              .concat(morph($sourceElement, newChild)[0])
+              .concat(copyAttributes(newChild, $sourceElement));
+
             domFn(newChild);
-
-            const updates = this.copyAttributes(newChild, $sourceElement);
-            this.updates = this.updates.concat(updates);
 
             break;
 
           //custom nodes
+          //@TODO cover this case by tests
+          case NODE_TYPES.TEXT_NODE:
           case NODE_TYPES.TEXT_RESULT_NODE:
-            const chunk = `${$sourceElement.textContent || ''}`;
-            const match = chunk.match(matchChunkRegex);
-            if(match){
-              const range = getRange($targetElement, 'rangeInsertion'); //@TODO strange name
-              const updateFn = () => {
-                const newValue = getChunkById(match[2], this.values);
-                const oldValue = getChunkById(match[2], this.prevValues);
+            domFn(document.createTextNode($sourceElement.textContent));
+            break;
+          case NODE_TYPES.CHUNK_NODE:
+            {
+              const matchIndex = $sourceElement.matchIndex;
+              const range = getRange($targetElement, 'chunkRange');
+              const updateFn = (values, prevValues) => {
+                const newValue = getChunkById(matchIndex, values);
+                const oldValue = getChunkById(matchIndex, prevValues);
 
                 if(newValue === oldValue){
                   return;
                 }
 
                 const preocessedChunksContainer = copyTextNodeChunks(newValue);
-                this.loop(preocessedChunksContainer, range);
+                const [subUpdates, initialRender] = morph(preocessedChunksContainer, range, { useDocFragment: true });
+                initialRender();
               }
-              this.updates.push(updateFn);
-              updateFn();
+              updates.push(updateFn);
               offset += range.childNodes.length + 1;
-              break;
             }
-            domFn(document.createTextNode($sourceElement.textContent));
             break;
           case NODE_TYPES.TEMPLATE_NODE:
             {
@@ -457,7 +433,8 @@ export function createHtml(options = {}){
               $sourceElement.futureResult.then((response) => {
                 range.update();
                 const preocessedChunksContainer = copyTextNodeChunks(response);
-                this.loop(preocessedChunksContainer, range);
+                const [subUpdates, initialRender] = morph(preocessedChunksContainer, range, { useDocFragment: true });
+                initialRender();
                 return preocessedChunksContainer;
               });
               offset += range.childNodes.length + 1;
@@ -495,16 +472,72 @@ export function createHtml(options = {}){
       }
 
       //same node
-      if(same($sourceElement, $targetElement, sanitizeNodePrefix)){
-        this.loop($sourceElement, $targetElement);
+      if(same($sourceElement, $targetElement)){
+        updates = updates
+          .concat(morph($sourceElement, $targetElement)[0])
+          .concat(copyAttributes($targetElement, $sourceElement));
 
-        const updates = this.copyAttributes($targetElement, $sourceElement);
-        this.updates = this.updates.concat(updates);
         continue;
       }
     }
-    return $target;
+    return [updates, () => options.useDocFragment ? $target.appendChild($currentTarget) : void 0];
   };
+
+  function html(...args){
+    return new Template(...args);
+  }
+
+  function render(template, target){
+    return template.render(target);
+  }
+
+  function Template(chunks = [], ...interpolations){
+    this.prevValues = [];
+    this.values = interpolations;
+
+    if(!chunks.length){
+      return this;
+    }
+
+    this.templateId = hash(chunks.join(PREFIX + POSTFIX));
+    const cached = templatesCache[this.templateId];
+
+    if(!isDefined(cached)){
+      const template = prepareLiterals(chunks);
+      this.container = generateContainer(sanitize(template));
+      templatesCache[this.templateId] = this.container;
+    } else {
+      this.container = cached;
+    }
+
+    this.updates = [];
+
+    return this;
+  };
+
+  Template.prototype.render = function(target = document.createDocumentFragment()){
+    const cached = containersMap.get(target);
+    if((cached || {}).templateId === this.templateId){
+      cached.update(this.values);
+      return;
+    }
+    const [updates, initialRender] = morph(this.container, target, { useDocFragment: true });
+    updates.forEach(u => u(this.values, this.prevValues));
+    initialRender();
+    this.updates = updates;
+    containersMap.set(target, {
+      templateId: this.templateId,
+      update: this.update.bind(this),
+    });
+    return target;
+  };
+
+  Template.prototype.update = function(newData){
+    this.prevValues = this.values;
+    this.values = newData;
+    this.updates.forEach(u => u(this.values, this.prevValues));
+  };
+
 
   return {
     html,
@@ -514,6 +547,9 @@ export function createHtml(options = {}){
     generateContainer,
     sanitize,
     replaceTokens,
+    copyAttributes,
+    morph,
+    processNode,
   }
 };
 
