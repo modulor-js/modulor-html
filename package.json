@@ -8,10 +8,11 @@
   },
   "scripts": {
     "test": "jest",
-    "test:watch": "jest --watch --no-cache",
+    "test:watch": "npm run test -- --watch --no-cache",
+    "test:platform": "jest -c jest.platform-polyfill.config.js",
     "build": "rollup -c",
     "build:watch": "npm run build -- --watch",
-    "benchmark": "jest benchmark/simple.benchmark.js --transformIgnorePatterns=[]",
+    "benchmark": "jest -c jest.benchmark.config.js",
     "benchmark:watch": "npm run benchmark -- --watch",
     "benchmark:browser": "parcel benchmark/browser_runner.html",
     "sandbox": "parcel"
@@ -44,6 +45,9 @@
     "testURL": "http://localhost",
     "transform": {
       "^.+\\.js$": "babel-jest"
+    },
+    "moduleNameMapper": {
+      "^web-components-polyfill$": "document-register-element"
     }
   }
 }

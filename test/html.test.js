@@ -1,5 +1,4 @@
-import 'document-register-element';
-//import 'custom-elements-jest';
+import 'web-components-polyfill';
 
 import { html, render, r, stopNode, Template, containersMap } from '../src/html';
 

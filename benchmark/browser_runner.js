@@ -19,4 +19,5 @@ window.describe = (label, fn) => {
   fn();
 };
 
-require('../benchmark/simple.benchmark');
+require('../benchmark/initial_rendering.benchmark');
+require('../benchmark/update.benchmark');

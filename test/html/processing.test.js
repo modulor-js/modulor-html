@@ -49,11 +49,11 @@ describe('processing', () => {
         expect(parsedString).toEqual(testSet.expectedPreparedLiterals);
       });
 
-      it('generates container correctly', () => {
-        const container = customInstance.generateContainer(str);
-        expect(container).toBeInstanceOf(HTMLElement);
-        expect(container.innerHTML).toBe(str);
-      });
+      //it('generates container correctly', () => {
+        //const container = customInstance.generateContainer(str);
+        //expect(container).toBeInstanceOf(HTMLElement);
+        //expect(container.innerHTML).toBe(str);
+      //});
 
       testSet.expectedReplacedTokens && it('replaces tokens correctly', () => {
         const prepared = customInstance.replaceTokens(str, valueArray);
