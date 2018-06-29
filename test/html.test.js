@@ -185,6 +185,22 @@ describe('transitions', () => {
     expect(container.innerHTML).toBe(snapshot2);
   });
 
+  it('basic update', () => {
+
+    const tpl = (text) => html`${text}`;
+
+    const container = document.createElement('div');
+
+    render(tpl('foo'), container);
+    expect(container.innerHTML).toBe('foo');
+
+    render(tpl('bar'), container);
+    expect(container.innerHTML).toBe('bar');
+
+    render(tpl('foo'), container);
+    expect(container.innerHTML).toBe('foo');
+  });
+
   it('falsy values', async () => {
     const container = document.createElement('div');
 
@@ -288,7 +304,137 @@ describe('transitions', () => {
     expect(container.innerHTML).toBe(snapshot2);
   });
 
+  it('promise', async () => {
 
+    const container = document.createElement('div');
+
+    const tpl = (scope) => html`${scope}`;
+
+    const promiseResult = Promise.resolve('async value');
+
+    render(tpl('test'), container);
+    expect(container.innerHTML).toBe('test');
+
+    render(tpl(promiseResult), container);
+   
+    render(tpl('test2'), container);
+    expect(container.innerHTML).toBe('test2');
+
+    await promiseResult;
+
+    expect(container.innerHTML).toBe('async value');
+  });
+
+});
+
+describe('function', () => {
+
+  it('only render', () => {
+
+    const tpl = (scope) => html`${scope}`;
+
+    const fn = jest.fn();
+
+    render(tpl(fn));
+    expect(fn).toHaveBeenCalled();
+  });
+
+  it('update', () => {
+
+    const container = document.createElement('div');
+
+    const tpl = (scope) => html`${scope}`;
+
+    const functionSpy = jest.fn();
+    const updateSpy = jest.fn();
+
+    const getFns = () => {
+      return (target, prevResult) => {
+        functionSpy(prevResult);
+        return 'test';
+      }
+    }
+
+    render(tpl(getFns()), container);
+    expect(functionSpy).toHaveBeenCalled();
+
+    functionSpy.mockReset();
+    updateSpy.mockReset();
+
+    render(tpl(getFns()), container);
+    expect(functionSpy).toHaveBeenCalledWith('test');
+  });
+
+});
+
+describe('element', () => {
+
+  it('replace element with element', () => {
+
+    const container = document.createElement('div');
+
+    const element1 = document.createElement('div');
+    const element2 = document.createElement('div');
+
+    const tpl = (scope) => html`${scope}`;
+
+    render(tpl(element1), container);
+    expect(container.contains(element1)).toBe(true);
+
+    render(tpl(element2), container);
+    expect(container.contains(element1)).toBe(false);
+    expect(container.contains(element2)).toBe(true);
+  });
+
+  it('replace element with fragment', () => {
+
+    const container = document.createElement('div');
+
+    const element = document.createElement('div');
+    const fragment = document.createDocumentFragment();
+
+    const subElement1 = document.createElement('div');
+    const subElement2 = document.createElement('div');
+
+    fragment.appendChild(subElement1);
+    fragment.appendChild(subElement2);
+
+    const tpl = (scope) => html`${scope}`;
+
+    render(tpl(element), container);
+    expect(container.contains(element)).toBe(true);
+
+    render(tpl(fragment), container);
+    expect(container.contains(element)).toBe(false);
+    expect(container.contains(subElement1)).toBe(true);
+    expect(container.contains(subElement2)).toBe(true);
+  });
+
+  it('replace fragment with element', () => {
+
+    const container = document.createElement('div');
+
+    const fragment = document.createDocumentFragment();
+
+    const subElement1 = document.createElement('div');
+    const subElement2 = document.createElement('div');
+
+    fragment.appendChild(subElement1);
+    fragment.appendChild(subElement2);
+
+    const element = document.createElement('div');
+
+    const tpl = (scope) => html`${scope}`;
+
+    render(tpl(fragment), container);
+    expect(container.contains(subElement1)).toBe(true);
+    expect(container.contains(subElement2)).toBe(true);
+
+    render(tpl(element), container);
+    expect(container.contains(element)).toBe(true);
+    expect(container.contains(subElement1)).toBe(false);
+    expect(container.contains(subElement2)).toBe(false);
+  });
 
 });
 
@@ -311,9 +457,13 @@ describe('ternary operator', () => {
     const snapshot2 = `<span></span>
       `;
 
-    tpl(false).render($container);
+    tpl(false)($container);
     expect($container.innerHTML).toBe(snapshot1);
-    tpl(true).render($container, true);
+    tpl(true)($container);
+    expect($container.innerHTML).toBe(snapshot2);
+    tpl(false)($container);
+    expect($container.innerHTML).toBe(snapshot1);
+    tpl(true)($container);
     expect($container.innerHTML).toBe(snapshot2);
   });
 
@@ -384,5 +534,35 @@ describe('ternary operator', () => {
         baz
       
     `);
+  });
+
+  it('case 4', () => {
+    const $container = document.createElement('div');
+
+    const tpl = (scope) => html`
+      ${scope ? html`
+        <span>${scope}</span>
+      ` : html`
+        <div class="foo1"></div>
+        <div class="foo2"></div>
+      `}`;
+
+    const snapshot1 = `<div class="foo1"></div>
+        <div class="foo2"></div>
+      `;
+
+    const snapshot2 = (scope) => `<span>${scope}</span>
+      `;
+
+    tpl(true)($container);
+    expect($container.innerHTML).toBe(snapshot2(true));
+    tpl(false)($container);
+    expect($container.innerHTML).toBe(snapshot1);
+    tpl('foo')($container);
+    expect($container.innerHTML).toBe(snapshot2('foo'));
+    tpl(48)($container);
+    expect($container.innerHTML).toBe(snapshot2(48));
+    tpl(false)($container);
+    expect($container.innerHTML).toBe(snapshot1);
   });
 });

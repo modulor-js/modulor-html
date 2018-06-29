@@ -3,11 +3,7 @@ import { NodesRange } from './range';
 const templatesCache = {};
 
 const NODE_TYPES = {
-  TEMPLATE_NODE: -1,
-  TEXT_RESULT_NODE: -2,
-  PROMISE_NODE: -3,
-  ELEMENT_RESULT_NODE: -4,
-  CHUNK_NODE: -5,
+  FUNCTION_NODE: -1,
   ELEMENT_NODE: 1,
   ATTRIBUTE_NODE: 2,
   TEXT_NODE: 3,
@@ -22,29 +18,25 @@ const NODE_TYPES = {
   NOTATION_NODE: 12
 };
 
-function same(nodeA, nodeB){
-  if(!nodeA || !nodeB){
-    return false;
+
+function emptyNode(node){
+  const { childNodes } = node;
+  for(let i = 0; i < childNodes.length; i++){
+    node.removeChild(childNodes[i]);
   }
+}
+
+function same(nodeA, nodeB){
   if(nodeA.nodeType !== nodeB.nodeType){
     return false;
   }
-  if(nodeA.range != nodeB.range){
-    return false;
-  }
-  if(nodeA.tagName && nodeB.tagName &&
-    (nodeA.tagName.toLowerCase() === nodeB.tagName.toLowerCase())
-  ){
-    return true;
-  }
-  return false;
+  return nodeA.tagName && nodeB.tagName &&
+         nodeA.tagName.toLowerCase() === nodeB.tagName.toLowerCase();
 };
 
 function isSameTextNode(nodeA, nodeB){
-  if(nodeA.nodeType === NODE_TYPES.TEXT_NODE && nodeA.nodeType === NODE_TYPES.TEXT_NODE && nodeA.textContent === nodeB.textContent){
-    return true;
-  }
-  return false;
+  return NODE_TYPES.TEXT_NODE === nodeA.nodeType === nodeA.nodeType &&
+         nodeA.textContent === nodeB.textContent;
 };
 
 function isDefined(value){
@@ -53,6 +45,10 @@ function isDefined(value){
 
 function isPromise(obj){
   return !!obj && (typeof obj === 'object' || typeof obj === 'function') && typeof obj.then === 'function';
+}
+
+function isFunction(value){
+  return typeof value == 'function';
 }
 
 //hash function taken from https://github.com/darkskyapp/string-hash/blob/master/index.js
@@ -70,14 +66,16 @@ function regExpEscape(literalString){
 };
 
 function getChunkType(chunk){
-  if(chunk instanceof Node){
+  if(isFunction(chunk)){
+    return 'function';
+  } else if(chunk instanceof Array){
+    return 'array';
+  } else if(chunk instanceof Node){
     return 'element';
-  } else if(chunk instanceof Template){
-    return 'template';
   } else if(isPromise(chunk)){
     return 'futureResult';
-  } else if(typeof chunk == 'function'){
-    return 'function';
+  } else if(!isDefined(chunk)){
+    return 'undefined';
   }
   return 'text';
 }
@@ -105,8 +103,6 @@ const DEFAULT_SANITIZE_NODE_PREFIX = `modulor_sanitize_node_${+(new Date())}:`;
 const sanitizeTags = ['table', 'tr', 'td'];
 const sanitizeTagsRegex = new RegExp(`<([ /])?(${sanitizeTags.join('|')})([ ][^]>)?`, 'igm');
 
-
-export const containersMap = new Map();
 
 export function createHtml(options = {}){
 
@@ -145,34 +141,110 @@ export function createHtml(options = {}){
       nodeCopy.tagName = $container.tagName.toLowerCase().replace(sanitizeNodePrefix, '').toUpperCase();
     }
 
+    const childAttributes = $container.attributes || [];
+    for(let j = 0; j < childAttributes.length; j++){
+      const { name, value }  = childAttributes[j];
+
+      const nameIsDynamic = name.match(findChunksRegex);
+      const valueIsDynamic = value.match(findChunksRegex);
+
+      const matchName = name.match(matchChunkRegex);
+      const matchValue = value.match(matchChunkRegex);
+
+      if(nameIsDynamic || valueIsDynamic){
+        nodeCopy.attributes.push((target) => {
+
+          if(name === 'class'){
+            target.className = '';
+            return value.split(' ').reduce((acc, className) => {
+              if(!className.match(findChunksRegex)){
+                target.classList.add(className);
+                return acc;
+              }
+              return acc.concat((values, prevValues) => {
+                const newValue = replaceTokens(className, values);
+                const oldValue = replaceTokens(className, prevValues);
+                if(oldValue !== newValue){
+                  oldValue && target.classList.remove(oldValue);
+                  newValue && target.classList.add(newValue);
+                }
+              });
+            }, []);
+          }
+
+          return [(values, prevValues) => {
+            const preparedName = matchName ? getChunkById(matchName[2], values) : replaceTokens(name, values);
+            const preparedPrevName = matchName ? getChunkById(matchName[2], prevValues) : replaceTokens(name, prevValues);
+
+            const preparedValue = matchValue ? getChunkById(matchValue[2], values) : replaceTokens(value, values);
+            const preparedPrevValue = matchValue ? getChunkById(matchValue[2], prevValues) : replaceTokens(value, prevValues);
+
+            if(preparedName === preparedPrevName && preparedValue === preparedPrevValue){
+              return;
+            }
+
+            if(preparedName !== preparedPrevName){
+              target.removeAttribute(preparedPrevName);
+            }
+
+            if(!preparedName){
+              return;
+            }
+
+            if(getChunkType(preparedName) === 'function'){
+              preparedName(target, preparedValue);
+              return;
+            }
+
+            if(getChunkType(preparedValue) === 'futureResult'){
+              preparedValue.then((result) => setAttribute(target, preparedName, result));
+              return;
+            }
+
+            setAttribute(target, preparedName, preparedValue);
+          }];
+
+        });
+      } else {
+        nodeCopy.attributes.push({ name, value });
+      }
+    }
+
     const childNodes = $container.childNodes || [];
     for(let i = 0; i < childNodes.length; i++){
-      if(childNodes[i].nodeType === NODE_TYPES.TEXT_NODE){
-        const chunks = childNodes[i].textContent.split(splitChunkRegex);
+      const $childNode = childNodes[i];
+      if($childNode.nodeType === NODE_TYPES.TEXT_NODE){
+        const chunks = $childNode.textContent.split(splitChunkRegex);
         chunks.filter(chunk => !!chunk).forEach((chunk) => {
           const match = chunk.match(matchChunkRegex);
           if(match){
-            nodeCopy.childNodes.push({
-              nodeType: NODE_TYPES.CHUNK_NODE,
-              matchIndex: match[2]
+            const matchIndex = match[2];
+            nodeCopy.childNodes.push((range) => {
+              return (values) => renderChunk(getChunkById(matchIndex, values), range);
             });
           } else {
             nodeCopy.childNodes.push({
-              nodeType: NODE_TYPES.TEXT_RESULT_NODE,
+              nodeType: NODE_TYPES.TEXT_NODE,
               textContent: chunk,
             });
           }
         });
         continue;
       }
-      nodeCopy.childNodes.push(processNode(childNodes[i]));
+      if($childNode.nodeType === NODE_TYPES.COMMENT_NODE && $childNode.textContent.match(findChunksRegex)){
+        nodeCopy.childNodes.push((range) => {
+          const $element = document.createComment('');
+          const content = $childNode.textContent;
+          range.appendChild($element);
+          return (values) => {
+            $element.textContent = replaceTokens(content, values);
+          };
+        });
+        continue;
+      }
+      nodeCopy.childNodes.push(processNode($childNode));
     }
 
-    const childAttributes = $container.attributes || [];
-    for(let j = 0; j < childAttributes.length; j++){
-      const { name, value }  = childAttributes[j];
-      nodeCopy.attributes.push({ name, value });
-    }
     return nodeCopy;
   }
 
@@ -195,126 +267,106 @@ export function createHtml(options = {}){
     const indexRegex = `${groupMatches ? '(' : ''}\\d+${groupMatches ? ')' : ''}`;
     return `(${regExpEscape(PREFIX)}${indexRegex}${regExpEscape(POSTFIX)})`;
   };
-  
+
   function sanitize(str){
     return str.replace(sanitizeTagsRegex, `<$1${sanitizeNodePrefix}$2`);
   };
 
-  function copyTextNodeChunks(chunks){
-    const container = {
-      childNodes: [].concat(chunks).reduce((acc, chunk) => {
+  const updatesMap = new Map();
+  const rangesMap = new Map();
 
-        if(!isDefined(chunk)){
-          return acc;
+  function renderChunk(value, range, chunkType = getChunkType(value)){
+    const cached = updatesMap.get(range) || {};
+    const { lastChunk, lastRenderedChunkType, update } = cached;
+    if(lastChunk === value){
+      return range;
+    }
+    if(chunkType === 'futureResult'){
+      chunkProcessingFunctions['futureResult'](range, value);
+      return range;
+    }
+    if(lastRenderedChunkType !== chunkType){
+      emptyNode(range);
+    } else if(update){
+      const updateResult = update(value);
+      isFunction(updateResult) && (cached.update = updateResult);
+      cached.lastChunk = value;
+      return range;
+    }
+    updatesMap.set(range, {
+      update: chunkProcessingFunctions[chunkType](range, value),
+      lastRenderedChunkType: chunkType,
+      lastChunk: value
+    });
+    return range;
+  };
+
+  const chunkProcessingFunctions = {
+    'array': (range, value) => {
+      const preprocessedChunksContainer = {
+        childNodes: [].concat(value).map((chunk, index) => {
+          return (range) => (values) => renderChunk(values[index], range);
+        })
+      };
+      const [update, initialRender] = morph(preprocessedChunksContainer, range, { useDocFragment: true });
+      update(value);
+      initialRender();
+      return (newValue) => {
+        if(newValue.length !== value.length){
+          return chunkProcessingFunctions['array'](range, newValue);
         }
-
-        const chunkType = getChunkType(chunk);
-
-        const $el = {};
-
-        if(chunkType === 'text'){
-          $el.nodeType = NODE_TYPES.TEXT_RESULT_NODE;
-          $el.textContent = chunk;
+        update(newValue);
+      }
+    },
+    'undefined': emptyNode,
+    'text': (range, value) => {
+      const textNode = document.createTextNode(value);
+      range.appendChild(textNode);
+      return (value) => textNode.textContent = value;
+    },
+    'element': (range, value) => {
+      range.appendChild(value);
+      return (value) => {
+        if(range.childNodes.length > 1){
+          range.childNodes.slice(1).forEach(node => range.removeChild(node));
         }
-        if(chunkType === 'element'){
-          $el.nodeType = NODE_TYPES.ELEMENT_RESULT_NODE;
-        }
-        if(chunkType === 'template'){
-          $el.nodeType = NODE_TYPES.TEMPLATE_NODE;
-        }
-        if(chunkType === 'futureResult'){
-          $el.nodeType = NODE_TYPES.PROMISE_NODE;
-        }
-
-        $el[chunkType] = chunk;
-
-        return acc.concat($el);
-      }, [])
-    };
-    return container;
+        range.replaceChild(value, range.childNodes[0]);
+      }
+    },
+    'futureResult': (range, value) => {
+      value.then((response) => {
+        range.update();
+        renderChunk(response, range);
+      });
+    },
+    'function': (range, value) => {
+      let result = value(range);
+      return (value) => {
+        result = value(range, result);
+      }
+    },
   };
 
   function copyAttributes(target, source){
     const sourceAttributes = source.attributes;
     const targetAttributes = target.attributes;
 
-    const updates = [];
-    const attributesToKeep = {};
-
-    for(let i = 0; i < sourceAttributes.length; i++){
-      const { name, value }  = sourceAttributes[i];
-      const nameIsDynamic = name.match(findChunksRegex);
-      const valueIsDynamic = value.match(findChunksRegex);
-
-      attributesToKeep[name] = true;
-
-      if(!nameIsDynamic && !valueIsDynamic){
-        setAttribute(target, name, value);
-        continue;
-      }
-
-      if(name === 'class'){
-        target.className = '';
-        value.split(' ').forEach((className) => {
-          if(!className.match(findChunksRegex)){
-            target.classList.add(className);
-            return;
-          }
-          updates.push((values, prevValues) => {
-            const newValue = replaceTokens(className, values);
-            const oldValue = replaceTokens(className, prevValues);
-            if(oldValue !== newValue){
-              oldValue && target.classList.remove(oldValue);
-              newValue && target.classList.add(newValue);
-            }
-          });
-        });
-
-        continue;
-      }
-
-      const matchName = name.match(matchChunkRegex);
-      const matchValue = value.match(matchChunkRegex);
-
-      updates.push((values, prevValues) => {
-        const preparedName = matchName ? getChunkById(matchName[2], values) : replaceTokens(name, values);
-        const preparedPrevName = matchName ? getChunkById(matchName[2], prevValues) : replaceTokens(name, prevValues);
-
-        const preparedValue = matchValue ? getChunkById(matchValue[2], values) : replaceTokens(value, values);
-        const preparedPrevValue = matchValue ? getChunkById(matchValue[2], prevValues) : replaceTokens(value, prevValues);
-
-        if(preparedName === preparedPrevName && preparedValue === preparedPrevValue){
-          return;
-        }
-
-        if(preparedName !== preparedPrevName){
-          target.removeAttribute(preparedPrevName);
-        }
-
-        if(!preparedName){
-          return;
-        }
-
-        if(getChunkType(preparedName) === 'function'){
-          preparedName(target, preparedValue);
-          return;
-        }
-
-        if(getChunkType(preparedValue) === 'futureResult'){
-          preparedValue.then((result) => setAttribute(target, preparedName, result));
-          return;
-        }
-
-        setAttribute(target, preparedName, preparedValue);
-      });
+    for(let i = 0; i < targetAttributes.length; i++){
+      target.removeAttribute(targetAttributes[i].name);
     }
 
+    let updates = [];
 
-    for(let i = 0; i < targetAttributes.length; i++){
-      let { name } = targetAttributes[i];
-      if(!attributesToKeep[name]){
-        target.removeAttribute(name);
+    for(let i = 0; i < sourceAttributes.length; i++){
+      const attr = sourceAttributes[i];
+
+      if(isFunction(attr)){
+        updates = updates.concat(attr(target));
+        continue;
       }
+
+      const { name, value } = attr;
+      setAttribute(target, name, value);
     }
 
     return updates;
@@ -356,28 +408,33 @@ export function createHtml(options = {}){
 
       if(!$targetElement || !same($sourceElement, $targetElement)){
         const domFn = getDomFn($targetElement);
-        const getRange = ($targetElement, replacementType) => {
+        if(isFunction($sourceElement)){
+          let range = rangesMap.get($targetElement);
 
-          if($targetElement && $targetElement.range && $targetElement.replacementType === replacementType){
-            return $targetElement.range;
-          } else {
-            const range = new NodesRange(document.createTextNode(''), document.createTextNode(''));
+          if(!range){
+            range = new NodesRange();
             const { startNode } = range;
-            startNode.range = range;
-            startNode.replacementType = replacementType;
             domFn(range.extractContents());
-            return range;
+
+            rangesMap.set(startNode, range);
           }
+
+          const resFn = $sourceElement(range);
+
+          if(resFn){
+            updates.push(resFn);
+          }
+
+          range.update();
+
+          offset += range.childNodes.length + 1;
+          continue;
         }
         switch($sourceElement.nodeType){
-          //regular DOM nodes
           case NODE_TYPES.COMMENT_NODE:
             const $element = document.createComment('');
             const content = $sourceElement.textContent;
             domFn($element);
-            updates.push((values, prevValues) => {
-              $element.textContent = replaceTokens(content, values);
-            });
             break;
           case NODE_TYPES.ELEMENT_NODE:
             const newChild = document.createElement($sourceElement.tagName.toLowerCase());
@@ -389,76 +446,9 @@ export function createHtml(options = {}){
             domFn(newChild);
 
             break;
-
-          //custom nodes
-          //@TODO cover this case by tests
           case NODE_TYPES.TEXT_NODE:
-          case NODE_TYPES.TEXT_RESULT_NODE:
             domFn(document.createTextNode($sourceElement.textContent));
             break;
-          case NODE_TYPES.CHUNK_NODE:
-            {
-              const matchIndex = $sourceElement.matchIndex;
-              const range = getRange($targetElement, 'chunkRange');
-              const updateFn = (values, prevValues) => {
-                const newValue = getChunkById(matchIndex, values);
-                const oldValue = getChunkById(matchIndex, prevValues);
-
-                if(newValue === oldValue){
-                  return;
-                }
-
-                const preocessedChunksContainer = copyTextNodeChunks(newValue);
-                const [subUpdates, initialRender] = morph(preocessedChunksContainer, range, { useDocFragment: true });
-                initialRender();
-              }
-              updates.push(updateFn);
-              offset += range.childNodes.length + 1;
-            }
-            break;
-          case NODE_TYPES.TEMPLATE_NODE:
-            {
-              const range = getRange($targetElement, 'template');
-
-              $sourceElement.template.render(range);
-              range.update();
-              offset += range.childNodes.length + 1;
-
-              break;
-            }
-          case NODE_TYPES.PROMISE_NODE:
-            {
-              const range = getRange($targetElement, 'futureResult');
-
-              $sourceElement.futureResult.then((response) => {
-                range.update();
-                const preocessedChunksContainer = copyTextNodeChunks(response);
-                const [subUpdates, initialRender] = morph(preocessedChunksContainer, range, { useDocFragment: true });
-                initialRender();
-                return preocessedChunksContainer;
-              });
-              offset += range.childNodes.length + 1;
-
-              break;
-            }
-          case NODE_TYPES.ELEMENT_RESULT_NODE:
-            {
-              const range = getRange($targetElement, 'element');
-              if($sourceElement.element instanceof DocumentFragment || range.childNodes.length !== 1){
-                range.childNodes.forEach(node => range.removeChild(node));
-                range.appendChild($sourceElement.element);
-              } else {
-                range.replaceChild($sourceElement.element, range.childNodes[0]);
-              }
-
-              offset += range.childNodes.length + 1;
-
-              break;
-            }
-        }
-
-        if($target instanceof NodesRange){
-          $target.update();
         }
 
         continue;
@@ -480,69 +470,60 @@ export function createHtml(options = {}){
         continue;
       }
     }
-    return [updates, () => options.useDocFragment ? $target.appendChild($currentTarget) : void 0];
+    let prevValues = [];
+    return [
+      function update(values){
+        updates.forEach(u => u(values, prevValues))
+        prevValues = values;
+        return update;
+      },
+      () => options.useDocFragment ? $target.appendChild($currentTarget) : void 0
+    ];
   };
 
-  function html(...args){
-    return new Template(...args);
+
+  function render(template, target = document.createDocumentFragment()){
+    return renderChunk(template, target, 'function');
   }
 
-  function render(template, target){
-    return template.render(target);
-  }
-
-  function Template(chunks = [], ...interpolations){
-    this.prevValues = [];
-    this.values = interpolations;
+  function html(chunks = [], ...values){
 
     if(!chunks.length){
       return this;
     }
 
-    this.templateId = hash(chunks.join(PREFIX + POSTFIX));
-    const cached = templatesCache[this.templateId];
+    let templateId = hash(chunks.join(PREFIX + POSTFIX));
+    const cached = templatesCache[templateId];
+
+    let container;
 
     if(!isDefined(cached)){
       const template = prepareLiterals(chunks);
-      this.container = generateContainer(sanitize(template));
-      templatesCache[this.templateId] = this.container;
+      container = generateContainer(sanitize(template));
+      templatesCache[templateId] = container;
     } else {
-      this.container = cached;
+      container = cached;
     }
 
-    this.updates = [];
 
-    return this;
-  };
-
-  Template.prototype.render = function(target = document.createDocumentFragment()){
-    const cached = containersMap.get(target);
-    if((cached || {}).templateId === this.templateId){
-      cached.update(this.values);
-      return;
+    function renderFn(target = document.createDocumentFragment(), result){
+      if(result && result.templateId === templateId){
+        return result(values);
+      } else {
+        const [update, initialRender] = morph(container, target, { useDocFragment: true });
+        update(values);
+        initialRender();
+        update.templateId = templateId;
+        return update;
+      }
     }
-    const [updates, initialRender] = morph(this.container, target, { useDocFragment: true });
-    updates.forEach(u => u(this.values, this.prevValues));
-    initialRender();
-    this.updates = updates;
-    containersMap.set(target, {
-      templateId: this.templateId,
-      update: this.update.bind(this),
-    });
-    return target;
-  };
-
-  Template.prototype.update = function(newData){
-    this.prevValues = this.values;
-    this.values = newData;
-    this.updates.forEach(u => u(this.values, this.prevValues));
-  };
-
+    return renderFn;
+  }
 
   return {
     html,
     render,
-    Template,
+    renderChunk,
     prepareLiterals,
     generateContainer,
     sanitize,
@@ -553,11 +534,12 @@ export function createHtml(options = {}){
   }
 };
 
-const defaultInstance = createHtml({});
+export const { html, render, renderChunk } = createHtml({});
 
-export const html = defaultInstance.html;
-
-export const render = defaultInstance.render;
 export const r = (...args) => render(html(...args));
 
-export const Template = defaultInstance.Template;
+export const until = (promise, defaultContent) => (range) => {
+  renderChunk(defaultContent, range);
+  renderChunk(promise, range);
+};
+

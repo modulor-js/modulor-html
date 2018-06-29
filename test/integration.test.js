@@ -1,6 +1,6 @@
 import 'document-register-element';
 
-import { html, render, r, stopNode, Template, containersMap } from '../src/html';
+import { html, render, r, until } from '../src/html';
 import { NodesRange } from '../src/range';
 
 
@@ -223,3 +223,29 @@ describe('components', () => {
   });
 });
 
+
+describe('directives', () => {
+
+  it('until', async () => {
+    const container = document.createElement('div');
+
+    const tpl = (scope) => html`
+      ${until(scope.promiseResult, 'foo')}
+    `;
+
+    const promiseResult = new Promise(resolve => {
+      setTimeout(() => resolve('ok'), 1);
+    });
+
+    render(tpl({ promiseResult }), container);
+
+    expect(container.innerHTML).toBe(`foo
+    `);
+
+    await promiseResult;
+
+    expect(container.innerHTML).toBe(`ok
+    `);
+  });
+
+});
