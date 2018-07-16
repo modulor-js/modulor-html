@@ -2,10 +2,16 @@
 
 Yet another template engine based on [tagged template literals](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals)
 
-## Installation
+## TL;DR
 
-```sh
-npm install --save @modulor-js/html
+```js
+import { html, render } from '@modulor-js/html';
+
+const myVar = 'world';
+
+render(html`
+  <span>Hello ${myVar}</span>
+`, document.querySelector('#container'));
 ```
 
 ## Overview
@@ -19,6 +25,13 @@ The main exports are:
   - `html`: creates template function (wire)
 
   - `render`: renders template into DOM container
+  
+
+## Installation
+
+```sh
+npm install --save @modulor-js/html
+```
 
 
 ### Basic example ([demo](https://codepen.io/nogizhopaboroda/pen/ejJvje))
