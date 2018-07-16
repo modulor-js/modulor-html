@@ -273,7 +273,7 @@ IE >= 11 and all evergreens
 
   - self-closing tags (except for ones from [this list](http://xahlee.info/js/html5_non-closing_tag.html)) are not supported yet
 
-  - IE shuffles attributes in a strange manner so execution order might be unexpected (this is importnant to know when using `CustomElements`)
+  - IE shuffles attributes in a strange manner so execution order might be unexpected (this is important to know when using `CustomElements`)
 
   - calling `render` without second attribute generates `DocumentFragment` out of template
 
