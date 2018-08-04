@@ -1,20 +1,30 @@
 import uglify from 'rollup-plugin-uglify';
 import babel from 'rollup-plugin-babel';
 
-export default {
+const plugins = [
+  babel({
+    babelrc: false,
+    presets: [
+      ['es2015', { modules: false }],
+    ],
+    plugins: ['transform-node-env-inline']
+  }),
+  uglify()
+];
+
+export default [{
   input: 'src/html.js',
   output: {
     file: 'build/html.js',
     format: 'umd',
     name: 'MHTML'
   },
-  plugins: [
-    babel({
-      babelrc: false,
-      presets: [
-        ['es2015', { modules: false }],
-      ],
-    }),
-    uglify()
-  ]
-};
+  plugins
+}, {
+  input: 'src/directives.js',
+  output: {
+    file: 'build/directives.js',
+    format: 'cjs',
+  },
+  plugins
+}];

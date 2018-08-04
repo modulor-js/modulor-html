@@ -1,13 +1,12 @@
-import { createHtml } from '../../src/html';
+import { html, prepareLiterals, replaceTokens, sanitize, setPrefix, setPostfix, setSanitizeNodePrefix, updateChunkRegexes } from '../../src/html';
 
-const customInstance = createHtml({
-  PREFIX: '{modulor_html_chunk:',
-  POSTFIX: '}',
-  SANITIZE_NODE_PREFIX: 'sanitize:',
-});
+setPrefix('{modulor_html_chunk:');
+setPostfix('}');
+setSanitizeNodePrefix('sanitize:');
+updateChunkRegexes();
 
 it('is a function', () => {
-  expect(typeof customInstance.html).toBe('function');
+  expect(typeof html).toBe('function');
 });
 
 describe('processing', () => {
@@ -19,22 +18,22 @@ describe('processing', () => {
 
   const testSets = [
     {
-      parsedString: customInstance.prepareLiterals`baz ${value1}`,
+      parsedString: prepareLiterals`baz ${value1}`,
       expectedPreparedLiterals: 'baz {modulor_html_chunk:0}',
       expectedReplacedTokens: 'baz 1'
     },
     {
-      parsedString: customInstance.prepareLiterals`${value1} foo`,
+      parsedString: prepareLiterals`${value1} foo`,
       expectedPreparedLiterals: '{modulor_html_chunk:0} foo',
       expectedReplacedTokens: '1 foo',
     },
     {
-      parsedString: customInstance.prepareLiterals`foo`,
+      parsedString: prepareLiterals`foo`,
       expectedPreparedLiterals: 'foo',
       expectedReplacedTokens: 'foo',
     },
     {
-      parsedString: customInstance.prepareLiterals`foo ${value1} bar ${value2} baz`,
+      parsedString: prepareLiterals`foo ${value1} bar ${value2} baz`,
       expectedPreparedLiterals: 'foo {modulor_html_chunk:0} bar {modulor_html_chunk:1} baz',
       expectedReplacedTokens: 'foo 1 bar 2 baz',
     }
@@ -50,13 +49,13 @@ describe('processing', () => {
       });
 
       //it('generates container correctly', () => {
-        //const container = customInstance.generateContainer(str);
+        //const container = generateContainer(str);
         //expect(container).toBeInstanceOf(HTMLElement);
         //expect(container.innerHTML).toBe(str);
       //});
 
       testSet.expectedReplacedTokens && it('replaces tokens correctly', () => {
-        const prepared = customInstance.replaceTokens(str, valueArray);
+        const prepared = replaceTokens(str, valueArray);
         expect(prepared).toBe(testSet.expectedReplacedTokens);
       });
     });
@@ -109,7 +108,7 @@ describe('sanitize', () => {
   ]
   testSets.forEach((testSet, index) => {
     it(`set #${index}`, () => {
-      expect(customInstance.sanitize(testSet.input)).toBe(testSet.expectation);
+      expect(sanitize(testSet.input)).toBe(testSet.expectation);
     });
   })
 });
