@@ -1,6 +1,7 @@
 import 'web-components-polyfill';
 
-import { html, render, r, stopNode, Template, containersMap } from '../src/html';
+import { html, render, stopNode, Template, containersMap } from '../src/html';
+import { r } from '../src/directives';
 
 
 const template = (scope) => r`
@@ -565,4 +566,30 @@ describe('ternary operator', () => {
     tpl(false)($container);
     expect($container.innerHTML).toBe(snapshot1);
   });
+});
+
+
+describe('comment section', () => {
+
+  it('static value', () => {
+    const $container = document.createElement('div');
+
+    const tpl = () => html`1 <!-- foo -->`;
+
+    render(tpl(), $container);
+    expect($container.innerHTML).toBe('1 <!-- foo -->');
+  });
+
+  it('dynamic value', () => {
+    const $container = document.createElement('div');
+
+    const tpl = (scope) => html`1 <!-- foo ${scope} -->`;
+
+    render(tpl('bar'), $container);
+    expect($container.innerHTML).toBe('1 <!-- foo bar -->');
+
+    render(tpl('baz'), $container);
+    expect($container.innerHTML).toBe('1 <!-- foo baz -->');
+  });
+
 });

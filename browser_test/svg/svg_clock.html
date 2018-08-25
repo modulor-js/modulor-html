@@ -1,0 +1,37 @@
+<html>
+  <head>
+    <style>
+      #clock-container {
+        display: inline-block;
+        position: relative;
+        width: 20%;
+        padding-bottom: 100%;
+        vertical-align: middle;
+        overflow: hidden;
+      }
+      #face {
+        stroke-width: 1px;
+        stroke: #fff;
+        stroke: #333;
+        fill: none;
+      }
+      #hour, #min, #sec {
+        stroke-width: 1px;
+        fill: #333;
+        stroke: #555;
+      }
+      #sec {
+        stroke: #f55;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <button id="start">start</button>
+      <button id="stop">stop</button>
+      <select id="engine-selector"></select>
+    </div>
+    <div id="container"></div>
+    <script src="./svg_clock.js"></script>
+  </body>
+</html>

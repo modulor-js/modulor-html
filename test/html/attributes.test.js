@@ -1,11 +1,11 @@
-import { html, render, r, createHtml } from '../../src/html';
+import { html, render, r, createHtml, copyAttributes, processNode, setPrefix, setPostfix, updateChunkRegexes } from '../../src/html';
+
+setPrefix('{modulor_html_chunk:');
+setPostfix('}');
+
+updateChunkRegexes();
 
 describe('copy attributes', () => {
-
-  const { copyAttributes, processNode } = createHtml({
-    PREFIX: '{modulor_html_chunk:',
-    POSTFIX: '}',
-  });
 
   const spyNoValue = jest.fn();
   const spyWithValue = jest.fn();
@@ -144,16 +144,34 @@ describe('copy attributes', () => {
       'block',
     ];
 
-    const { copyAttributes } = createHtml({
-      PREFIX: '{modulor_html_chunk:',
-      POSTFIX: '}',
-    });
-
     const updates = copyAttributes(target, source);
     updates.forEach(u => u(data, []));
 
     expect(target.getAttribute('style')).toBe('display: block;');
     expect(spy).toHaveBeenCalledWith('style', 'display: block;');
+  });
+
+  it('copies style attribute as object correctly', () => {
+    const element = document.createElement('div');
+    element.innerHTML = `
+      <input style="{modulor_html_chunk:0}"/>
+    `;
+
+    const source = processNode(element.querySelector('input'));
+
+    const target = document.createElement('input');
+
+    const data = [
+      {
+        display: 'block',
+        marginRight: '0'
+      },
+    ];
+
+    const updates = copyAttributes(target, source);
+    updates.forEach(u => u(data, []));
+
+    expect(target.getAttribute('style')).toBe('display: block; margin-right: 0px;');
   });
 });
 
