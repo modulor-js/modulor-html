@@ -1,1 +1,4 @@
 .babelrc
+docs/
+examples/
+browser_test/
