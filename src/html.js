@@ -76,6 +76,18 @@ function applyAttribute(target, name, value){
   target.setAttribute(name, value);
 }
 
+function applyClassFn(value, fn){
+  if(!isDefined(value) || value === ''){
+    return;
+  }
+  const chunkType = getChunkType(value);
+  if(chunkType === 'promise'){
+    return value.then((newValue) => applyClassFn(newValue, fn));
+  }
+  let classesArray = chunkType === 'array' ? value : ('' + value).split(' ');
+  return classesArray.forEach((className) => fn(className));
+}
+
 function processNode($container){
   const nodeCopy = {
     nodeType: $container.nodeType,
@@ -108,11 +120,12 @@ function processNode($container){
       dynamic.length && nodeCopy.attributes.push((target, cbk) => {
         return (values, prevValues) => {
           dynamic.forEach((className) => {
-            const newValue = replaceTokens(className, values);
-            const oldValue = replaceTokens(className, prevValues);
+            const matchClass = className.match(matchChunkRegex);
+            const newValue = matchClass ? values[matchClass[2]] : replaceTokens(className, values);
+            const oldValue = matchClass ? prevValues[matchClass[2]] : replaceTokens(className, prevValues);
             if(oldValue !== newValue){
-              oldValue && target.classList.remove(oldValue);
-              newValue && target.classList.add(newValue);
+              oldValue && applyClassFn(oldValue, (className) => target.classList.remove(className));
+              newValue && applyClassFn(newValue, (className) => target.classList.add(className));
             }
           });
         };

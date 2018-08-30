@@ -235,6 +235,103 @@ describe('classes', () => {
     render(tpl(data2), container);
     expect(container.innerHTML).toBe(snapshot2);
   });
+
+  it('multiple classes in string', () => {
+    const container = document.createElement('div');
+
+    const tpl = (scope) => html`
+      <div class="foo ${scope}"></div>
+    `;
+
+    const data1 = 'class-a class-b';
+    const snapshot1 = `<div class="foo ${data1}"></div>
+    `;
+
+    render(tpl(data1), container);
+    expect(container.innerHTML).toBe(snapshot1);
+
+    const data2 = 'class-d class-c';
+    const snapshot2 = `<div class="foo ${data2}"></div>
+    `;
+
+    render(tpl(data2), container);
+    expect(container.innerHTML).toBe(snapshot2);
+
+    const data3 = 'class-e';
+    const snapshot3 = `<div class="foo ${data3}"></div>
+    `;
+
+    render(tpl(data3), container);
+    expect(container.innerHTML).toBe(snapshot3);
+  });
+
+  it('arrays', () => {
+    const container = document.createElement('div');
+
+    const tpl = (scope) => html`
+      <div class="foo ${scope}"></div>
+    `;
+
+    const data1 = ['class-a', 'class-b'];
+    const snapshot1 = `<div class="foo ${data1.join(' ')}"></div>
+    `;
+
+    render(tpl(data1), container);
+    expect(container.innerHTML).toBe(snapshot1);
+
+    const data2 = ['class-d', 'class-c'];
+    const snapshot2 = `<div class="foo ${data2.join(' ')}"></div>
+    `;
+
+    render(tpl(data2), container);
+    expect(container.innerHTML).toBe(snapshot2);
+
+    const data3 = ['class-e'];
+    const snapshot3 = `<div class="foo ${data3.join(' ')}"></div>
+    `;
+
+    render(tpl(data3), container);
+    expect(container.innerHTML).toBe(snapshot3);
+  });
+
+  it('promises', async () => {
+    const container = document.createElement('div');
+
+    const tpl = (scope) => html`
+      <div class="foo ${scope}"></div>
+    `;
+
+    const data1 = Promise.resolve('class-a');
+    const snapshot1 = `<div class="foo class-a"></div>
+    `;
+
+    render(tpl(data1), container);
+
+    await new Promise(resolve => setTimeout(resolve, 1));
+
+    expect(container.innerHTML).toBe(snapshot1);
+
+    const data2 = Promise.resolve(['class-c', 'class-f']);
+    const snapshot2 = `<div class="foo class-c class-f"></div>
+    `;
+
+    render(tpl(data2), container);
+
+    await new Promise(resolve => setTimeout(resolve, 1));
+
+    expect(container.innerHTML).toBe(snapshot2);
+
+    const data3 = Promise.resolve('');
+    const snapshot3 = `<div class="foo"></div>
+    `;
+
+    render(tpl(data3), container);
+
+    await new Promise(resolve => setTimeout(resolve, 1));
+
+    expect(container.innerHTML).toBe(snapshot3);
+  });
+
 });
 
 it('updates attributes correctly', () => {
