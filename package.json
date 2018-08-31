@@ -15,7 +15,9 @@
     "benchmark": "jest -c jest.benchmark.config.js --verbose",
     "benchmark:watch": "npm run benchmark -- --watch",
     "benchmark:browser": "parcel benchmark/browser_runner.html",
-    "sandbox": "parcel"
+    "sandbox": "parcel",
+    "examples": "modulor-storybook",
+    "examples:build": "build-storybook --output='./docs/examples'"
   },
   "repository": {
     "type": "git",
@@ -37,6 +39,7 @@
     "hyperhtml": "^2.5.0",
     "jest": "^22.1.4",
     "lit-html": "^0.8.0",
+    "modulor-storybook": "github:modulor-js/modulor-storybook",
     "parcel-bundler": "^1.7.0",
     "rollup": "^0.55.5",
     "rollup-plugin-babel": "^3.0.3",
@@ -50,5 +53,9 @@
     "moduleNameMapper": {
       "^web-components-polyfill$": "document-register-element"
     }
+  },
+  "storybook": {
+    "storybookDir": "examples",
+    "setupFile": "storybook-setup.js"
   }
 }
