@@ -95,9 +95,9 @@ render(tpl($element), container);
 
 ### Functions ([demo](https://codepen.io/nogizhopaboroda/pen/ejJWEQ))
 
-Values as functions can be used to get low-level access to rendering process. It most cases you won't need it.
+Values as functions can be used to get low-level access to rendering process. In most cases you won't need it.
 
-Such functions are called with only one argument `container`, which has standart `Node` api such as `.appendChild()` and so on.
+Such functions are called with only one argument `container`, which has standard `Node` api such as `.appendChild()` and so on. (*execution of `html` itself returns such function*)
 
 ```js
 import { html, render } from '@modulor-js/html';
