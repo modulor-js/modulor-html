@@ -39,7 +39,7 @@ setInterval(() => {
 }, 1000);
 ```
 
-[api and examples](./API.md)
+[api](./API.md) and [examples](https://modulor-js.github.io/modulor-html/?story=Basic&storyKind=hello%20world)
 
 ## Goals
 
