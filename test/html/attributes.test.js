@@ -354,3 +354,49 @@ it('updates attributes correctly', () => {
   expect(container.innerHTML).toBe(snapshot(data2, ' extra="bla"'));
 });
 
+
+describe('boolean attrs and value', () => {
+  it('updates value correctly', () => {
+    const container = document.createElement('div');
+
+    const tpl = (scope) => html`<input value=${scope} />`;
+
+    render(tpl('test'), container);
+    expect(container.firstChild.value).toBe('test');
+
+    render(tpl(''), container);
+    expect(container.firstChild.value).toBe('');
+
+    render(tpl('ok'), container);
+    expect(container.firstChild.value).toBe('ok');
+
+    render(tpl(null), container);
+    expect(container.firstChild.value).toBe('');
+
+    render(tpl(false), container);
+    expect(container.firstChild.value).toBe('false');
+  });
+
+
+  it('updates boolean attrs correctly', () => {
+    const container = document.createElement('div');
+
+    const tpl = (scope) => html`
+      <input type="checkbox" ${scope.disabled} checked=${scope.checked} autofocus />
+    `;
+
+    render(tpl({ disabled: 'disabled', checked: true }), container);
+    expect(container.querySelector('input').disabled).toBe(true);
+    expect(container.querySelector('input').checked).toBe(true);
+    expect(container.querySelector('input').autofocus).toBe(true);
+
+    render(tpl({ checked: false }), container);
+    expect(container.querySelector('input').disabled).toBe(false);
+    expect(container.querySelector('input').checked).toBe(false);
+    expect(container.querySelector('input').autofocus).toBe(true);
+
+    render(tpl({ checked: 'true' }), container);
+    expect(container.querySelector('input').checked).toBe(true);
+  });
+});
+

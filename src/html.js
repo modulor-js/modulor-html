@@ -1,7 +1,7 @@
 import { NodesRange } from './range';
 import {
   emptyNode, same, hash, regExpEscape,
-  isSameTextNode, isDefined, isPromise, isFunction, isObject
+  isSameTextNode, isDefined, isPromise, isFunction, isObject, isBoolean
 } from './helpers';
 
 import { ELEMENT_NODE, TEXT_NODE, COMMENT_NODE, DEFAULT_NAMESPACE_URI } from './constants';
@@ -49,9 +49,9 @@ function replaceTokens(text, dataMap = []){
   });
 };
 
-function applyAttribute(target, name, value){
+function applyAttribute(target, { name, value }, isBoolean){
   if(isPromise(value)){
-    value.then((result) => applyAttribute(target, name, result));
+    value.then((result) => applyAttribute(target, { name, value: result }, isBoolean));
     return;
   }
 
@@ -67,7 +67,9 @@ function applyAttribute(target, name, value){
     return;
   }
 
-  if(value !== '' && name in target){
+  const forceSetAttribute = isBoolean && value === '';
+
+  if(!forceSetAttribute && name in target){
     try {
       target[name] = value;
       return;
@@ -154,14 +156,14 @@ function processNode($container){
             return;
           }
 
-          applyAttribute(target, preparedName, preparedValue);
+          applyAttribute(target, { name: preparedName, value: preparedValue }, isBoolean($container[preparedName]));
           return { [preparedName]: preparedValue };
 
         };
 
       });
     } else {
-      nodeCopy.attributes.push({ name, value });
+      nodeCopy.attributes.push({ name, value, isBoolean: isBoolean($container[name]) });
     }
   }
 
@@ -323,8 +325,9 @@ function copyAttributes(target, source){
       continue;
     }
 
-    const { name, value } = attr;
-    applyAttribute(target, name, value);
+    const { name, value, isBoolean } = attr;
+
+    applyAttribute(target, { name, value }, isBoolean);
     props[name] = value;
   }
 
