@@ -35,6 +35,10 @@ export function isObject(value){
   return value && typeof value === 'object' && value.constructor === Object;
 }
 
+export function isBoolean(value){
+  return typeof value === typeof true;
+}
+
 //hash function taken from https://github.com/darkskyapp/string-hash/blob/master/index.js
 export function hash(str) {
   var hash = 5381,

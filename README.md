@@ -47,7 +47,7 @@ setInterval(() => {
 
   - Designed to be compatible with CustomElements
 
-  - Small size (**3.2kb** minigzipped)
+  - Small size (**3.3kb** minigzipped)
 
   - High performance
 
