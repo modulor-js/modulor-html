@@ -3,7 +3,7 @@
 
  
 <img align="center" width="95" height="95"
-     alt="Philosopher’s stone, logo of PostCSS"
+     alt="modulor logo"
      src="./logo.svg">
 <span>&nbsp;&nbsp;&nbsp;Missing template engine for Web Components</span>
 
