@@ -1,4 +1,4 @@
-# modulor-html  [![GitHub license](https://img.shields.io/github/license/modulor-js/modulor-html.svg)](./LICENSE) [![Build Status](https://travis-ci.org/modulor-js/modulor-html.svg?branch=master)](https://travis-ci.org/modulor-js/modulor-html) [![David (path)](https://img.shields.io/david/modulor-js/modulor-html.svg)](https://david-dm.org/modulor-js/modulor-html)
+# modulor-html  [![GitHub license](https://img.shields.io/github/license/modulor-js/modulor-html.svg)](./LICENSE) [![Codecov](https://img.shields.io/codecov/c/github/modulor-js/modulor-html.svg)](https://codecov.io/gh/modulor-js/modulor-html) [![npm bundle size (minified + gzip)](https://img.shields.io/bundlephobia/minzip/@modulor-js/html.svg)](https://bundlephobia.com/result?p=@modulor-js/html) [![Build Status](https://travis-ci.org/modulor-js/modulor-html.svg?branch=master)](https://travis-ci.org/modulor-js/modulor-html) [![David (path)](https://img.shields.io/david/modulor-js/modulor-html.svg)](https://david-dm.org/modulor-js/modulor-html)
 
 
  
