@@ -1,4 +1,6 @@
-# modulor-html
+# modulor-html  [![GitHub license](https://img.shields.io/github/license/modulor-js/modulor-html.svg)](./LICENSE) [![Build Status](https://travis-ci.org/modulor-js/modulor-html.svg?branch=master)](https://travis-ci.org/modulor-js/modulor-html) [![David (path)](https://img.shields.io/david/modulor-js/modulor-html.svg)](https://david-dm.org/modulor-js/modulor-html)
+
+
  
 <img align="center" width="95" height="95"
      alt="Philosopher’s stone, logo of PostCSS"
@@ -39,7 +41,7 @@ setInterval(() => {
 }, 1000);
 ```
 
-[api](./API.md) and [examples](https://modulor-js.github.io/modulor-html/?story=Basic&storyKind=hello%20world)
+**[api](./API.md)** and **[examples](https://modulor-js.github.io/modulor-html/?story=Basic&storyKind=hello%20world)**
 
 ## Goals
 
