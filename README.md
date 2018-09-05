@@ -1,4 +1,6 @@
-# modulor-html  [![GitHub license](https://img.shields.io/github/license/modulor-js/modulor-html.svg)](./LICENSE) [![Codecov](https://img.shields.io/codecov/c/github/modulor-js/modulor-html.svg)](https://codecov.io/gh/modulor-js/modulor-html) [![npm bundle size (minified + gzip)](https://img.shields.io/bundlephobia/minzip/@modulor-js/html.svg)](https://bundlephobia.com/result?p=@modulor-js/html) [![Build Status](https://travis-ci.org/modulor-js/modulor-html.svg?branch=master)](https://travis-ci.org/modulor-js/modulor-html) [![David (path)](https://img.shields.io/david/modulor-js/modulor-html.svg)](https://david-dm.org/modulor-js/modulor-html)
+# modulor-html  [![Tweet](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/intent/tweet?text=Missing%20template%20engine%20for%20Web%20Components&url=https://github.com/modulor-js/modulor-html&hashtags=webcomponents,template-engine,js)
+
+[![GitHub license](https://img.shields.io/github/license/modulor-js/modulor-html.svg)](./LICENSE) [![Codecov](https://img.shields.io/codecov/c/github/modulor-js/modulor-html.svg)](https://codecov.io/gh/modulor-js/modulor-html) [![npm bundle size (minified + gzip)](https://img.shields.io/bundlephobia/minzip/@modulor-js/html.svg)](https://bundlephobia.com/result?p=@modulor-js/html) [![Build Status](https://travis-ci.org/modulor-js/modulor-html.svg?branch=master)](https://travis-ci.org/modulor-js/modulor-html) [![David (path)](https://img.shields.io/david/modulor-js/modulor-html.svg)](https://david-dm.org/modulor-js/modulor-html)
 
 
  
