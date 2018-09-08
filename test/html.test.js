@@ -128,6 +128,32 @@ describe('tables', () => {
   });
 });
 
+describe('<style> tag', () => {
+  const template = (color) => html`
+    <style>
+      .test-input { color: ${color}; }
+    </style>
+    <input class="test-input" />
+  `;
+
+  const fixture = (color) => `<style>
+      .test-input { color: ${color}; }
+    </style>
+    <input class="test-input">
+  `;
+
+  const $container = document.createElement('div');
+
+  it('renders correctly', () => {
+    const value1 = 'red'
+    const value2 = 'green'
+    render(template(value1), $container);
+    expect($container.innerHTML).toBe(fixture(value1));
+    render(template(value2), $container);
+    expect($container.innerHTML).toBe(fixture(value2));
+  });
+});
+
 describe('transitions', () => {
 
   const tpl = html`

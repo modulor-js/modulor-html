@@ -105,6 +105,18 @@ describe('sanitize', () => {
         </sanitize:table>
       `
     },
+    {
+      input: `
+        <style>
+          .foo > .bar {  }
+        </style>
+      `,
+      expectation: `
+        <sanitize:style>
+          .foo > .bar {  }
+        </sanitize:style>
+      `
+    },
   ]
   testSets.forEach((testSet, index) => {
     it(`set #${index}`, () => {

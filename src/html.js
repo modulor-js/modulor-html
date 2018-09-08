@@ -19,7 +19,7 @@ let PREFIX = `{modulor_html_chunk_${+new Date()}:`;
 let POSTFIX = '}';
 
 let sanitizeNodePrefix = `modulor_sanitize_node_${+(new Date())}:`;
-const sanitizeTags = ['table', 'tr', 'td'];
+const sanitizeTags = ['table', 'tr', 'td', 'style'];
 const sanitizeTagsRegex = new RegExp(`<([ /])?(${sanitizeTags.join('|')})([ ][^]>)?`, 'igm');
 
 let findChunksRegex = new RegExp(getTokenRegExp(), 'ig');
