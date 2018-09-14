@@ -29,3 +29,26 @@ describe('Range', () => {
   });
 
 });
+
+describe('Instance methods', () => {
+
+  const container = document.createElement('div');
+  const range = new NodesRange();
+
+  it('has DOM node methods', () => {
+    const range = new NodesRange();
+    expect(typeof range.appendChild).toBe('function');
+    expect(typeof range.removeChild).toBe('function');
+    expect(typeof range.replaceChild).toBe('function');
+  });
+
+  it('extractContents works correctly', () => {
+    const range = new NodesRange();
+    const { startNode, stopNode } = range;
+    const result = range.extractContents();
+    expect(result instanceof DocumentFragment).toBe(true);
+    expect(result.firstChild).toBe(startNode);
+    expect(result.lastChild).toBe(stopNode);
+  });
+
+});
