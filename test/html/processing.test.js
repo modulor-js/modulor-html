@@ -1,4 +1,4 @@
-import { html, prepareLiterals, replaceTokens, sanitize, setPrefix, setPostfix, setSanitizeNodePrefix, updateChunkRegexes } from '../../src/html';
+import { html, prepareLiterals, replaceTokens, sanitize, openSelfClosingTags, setPrefix, setPostfix, setSanitizeNodePrefix, updateChunkRegexes } from '../../src/html';
 
 setPrefix('{modulor_html_chunk:');
 setPostfix('}');
@@ -121,6 +121,54 @@ describe('sanitize', () => {
   testSets.forEach((testSet, index) => {
     it(`set #${index}`, () => {
       expect(sanitize(testSet.input)).toBe(testSet.expectation);
+    });
+  })
+});
+
+
+describe('open self closing tags', () => {
+
+  const testSets = [
+    {
+      input: '<my-component/>',
+      expectation: '<my-component></my-component>'
+    },
+    {
+      input: '<my-component foo="blah"/>',
+      expectation: '<my-component foo="blah"></my-component>'
+    },
+    {
+      input: '<my-component disabled foo="blah />"/>',
+      expectation: '<my-component disabled foo="blah />"></my-component>'
+    },
+    {
+      input: '<input   /  >',
+      expectation: '<input   ></input>'
+    },
+    {
+      input: '<{modulor_html_chunk_234234:123}/>',
+      expectation: '<{modulor_html_chunk_234234:123}></{modulor_html_chunk_234234:123}>'
+    },
+    {
+      input: `
+        <div>
+          <img>
+          <span></span>
+          <my-component disabled foo="blah />"/>
+        </div>
+      `,
+      expectation: `
+        <div>
+          <img>
+          <span></span>
+          <my-component disabled foo="blah />"></my-component>
+        </div>
+      `
+    },
+  ]
+  testSets.forEach((testSet, index) => {
+    it(`set #${index}`, () => {
+      expect(openSelfClosingTags(testSet.input)).toBe(testSet.expectation);
     });
   })
 });

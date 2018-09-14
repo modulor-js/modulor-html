@@ -92,6 +92,24 @@ storiesOf('Components')
     render(tpl({ first: 'foo', second: 'bar' }), container);
 
   })
+  .add('self-closing', () => (container) => {
+
+    customElements.define('my-component', class extends HTMLElement {
+      set props({ first, second }){
+        render(html`
+          <div>first: ${first}</div>
+          <div>second: ${second}</div>
+        `, this);
+      }
+    });
+
+    const tpl = ({ first, second }) => html`
+      <my-component first="${first}" second="${second}"/>
+    `;
+
+    render(tpl({ first: 'foo', second: 'bar' }), container);
+
+  })
   .add('with ShadowDOM', () => (container) => {
 
     customElements.define('my-component', class extends HTMLElement {
