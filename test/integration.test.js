@@ -1,8 +1,7 @@
 import 'document-register-element';
 
-import { html, render } from '../src/html';
-import { r, until, unsafeHtml, asyncAppend, asyncReplace } from '../src/directives';
-import { NodesRange } from '../src/range';
+import { html, render, NodesRange } from '@modulor-js/html';
+import { r, until, unsafeHtml, asyncAppend, asyncReplace } from '@modulor-js/html/directives';
 
 
 describe('Range', () => {

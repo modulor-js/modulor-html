@@ -1,4 +1,6 @@
-import { html, prepareLiterals, replaceTokens, sanitize, openSelfClosingTags, setPrefix, setPostfix, setSanitizeNodePrefix, updateChunkRegexes } from '../../src/html';
+import {
+  html, prepareLiterals, replaceTokens, sanitize, openSelfClosingTags, setPrefix, setPostfix, setSanitizeNodePrefix, updateChunkRegexes
+} from '../../src/html';
 
 setPrefix('{modulor_html_chunk:');
 setPostfix('}');

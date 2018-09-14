@@ -1,7 +1,7 @@
 import 'web-components-polyfill';
 
-import { html, render, stopNode, Template, containersMap } from '../src/html';
-import { r } from '../src/directives';
+import { html, render, stopNode, Template, containersMap } from '@modulor-js/html';
+import { r } from '@modulor-js/html/directives';
 
 
 const template = (scope) => r`
