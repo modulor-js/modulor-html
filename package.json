@@ -18,7 +18,7 @@
     "benchmark:browser": "parcel benchmark/browser_runner.html",
     "sandbox": "parcel",
     "examples": "modulor-storybook",
-    "examples:build": "build-storybook --output='./docs/examples'"
+    "examples:build": "build-storybook --output='./docs'"
   },
   "repository": {
     "type": "git",
