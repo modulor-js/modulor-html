@@ -22,6 +22,8 @@ let sanitizeNodePrefix = `modulor_sanitize_node_${+(new Date())}:`;
 const sanitizeTags = ['table', 'tr', 'td', 'style'];
 const sanitizeTagsRegex = new RegExp(`<([ /])?(${sanitizeTags.join('|')})([ ][^]>)?`, 'igm');
 
+const selfClosingRegex = /<([^\s]+)([ ].+)?\/([ ]+)?>/igm;
+
 let findChunksRegex = new RegExp(getTokenRegExp(), 'ig');
 let replaceChunkRegex = new RegExp(getTokenRegExp(true), 'ig');
 let matchChunkRegex = new RegExp(`^${getTokenRegExp(true)}$`);
@@ -230,6 +232,10 @@ function getTokenRegExp(groupMatches){
 
 function sanitize(str){
   return str.replace(sanitizeTagsRegex, `<$1${sanitizeNodePrefix}$2`);
+};
+
+function openSelfClosingTags(str){
+  return str.replace(selfClosingRegex, '<$1$2></$1>');
 };
 
 export function render(value, range = document.createDocumentFragment()){
@@ -471,7 +477,7 @@ export function html(chunks = [], ...values){
 
   if(!isDefined(cached)){
     const template = prepareLiterals(chunks);
-    container = generateContainer(sanitize(template));
+    container = generateContainer(sanitize(openSelfClosingTags(template)));
     templatesCache[templateId] = container;
   } else {
     container = cached;
@@ -504,7 +510,7 @@ export function stopNode(){};
 if(process.env.NODE_ENV === 'test'){
   Object.assign(module.exports, {
     replaceTokens, processNode, generateContainer,
-    sanitize, copyAttributes, prepareLiterals,
+    sanitize, copyAttributes, prepareLiterals, openSelfClosingTags,
     setPrefix: (value) => PREFIX = value,
     setPostfix: (value) => POSTFIX = value,
     setSanitizeNodePrefix: (value) => sanitizeNodePrefix = value,

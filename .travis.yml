@@ -1,12 +1,23 @@
 language: node_js
 node_js:
   - stable
-script:
-  - npm run test -- --coverage
-  - npm run test:platform
-  - npm run benchmark
 
-before_install:
-  - pip install --user codecov
-after_success:
-  - codecov --file coverage/lcov.info --disable search
+
+jobs:
+  include:
+    - stage: test
+      name: "Main unit tests suite + collect coverage"
+      script: npm run test -- --coverage
+      before_install:
+        - pip install --user codecov
+      after_success:
+        - codecov --file coverage/lcov.info --disable search
+    - stage: test
+      name: "Test with platform polyfill"
+      script: npm run test:platform
+    - stage: test
+      name: "Test production build"
+      script: npm run test:build
+    - stage: test
+      name: "Benchmark"
+      script: npm run benchmark

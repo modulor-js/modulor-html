@@ -1,4 +1,6 @@
-import { html, render, r, createHtml, copyAttributes, processNode, setPrefix, setPostfix, updateChunkRegexes } from '../../src/html';
+import {
+  html, render, r, createHtml, copyAttributes, processNode, setPrefix, setPostfix, updateChunkRegexes
+} from '../../src/html';
 
 setPrefix('{modulor_html_chunk:');
 setPostfix('}');

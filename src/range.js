@@ -50,16 +50,10 @@ NodesRange.prototype.extractContents = function(){
 NodesRange.prototype.update = function(){
   this.childNodes = [];
   for(let node = this.startNode.nextSibling; node && node !== this.stopNode; node = node.nextSibling){
-    if(node.range){
-      node.range.onUpdate = () => this.update();
-    }
     this.childNodes.push(node);
   }
 
   this.firstChild = this.childNodes[0];
   this.lastChild = this.childNodes[this.childNodes.length - 1];
-  this.onUpdate && this.onUpdate();
 }
-
-NodesRange.prototype.getByIndex = function(index){};
 
