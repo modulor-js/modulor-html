@@ -52,3 +52,5 @@ export function hash(str) {
 export function regExpEscape(literalString){
   return literalString.replace(/[-[\]{}()*+!<=:?.\/\\^$|#\s,]/g, '\\$&');
 };
+
+export function noop(){}

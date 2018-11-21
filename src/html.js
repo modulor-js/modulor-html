@@ -1,6 +1,6 @@
 import { NodesRange } from './range';
 import {
-  emptyNode, same, hash, regExpEscape,
+  emptyNode, same, hash, regExpEscape, noop,
   isSameTextNode, isDefined, isPromise, isFunction, isObject, isBoolean
 } from './helpers';
 
@@ -22,26 +22,38 @@ let sanitizeNodePrefix = `modulor_sanitize_node_${+(new Date())}:`;
 const sanitizeTags = ['table', 'tr', 'td', 'style'];
 const sanitizeTagsRegex = new RegExp(`<([ /])?(${sanitizeTags.join('|')})([ ][^]>)?`, 'igm');
 
+let specialTagName = `modulor-dynamic-tag-${+new Date()}`;
+let specialAttributeName = `modulor-chunk-${+new Date()}`;
+let dynamicTagsRegex = getDynamicTagsRegex();
+
 const selfClosingRegex = /<([^\s]+)([ ].+)?\/([ ]+)?>/igm;
 
 let findChunksRegex = new RegExp(getTokenRegExp(), 'ig');
 let replaceChunkRegex = new RegExp(getTokenRegExp(true), 'ig');
 let matchChunkRegex = new RegExp(`^${getTokenRegExp(true)}$`);
 
+let preventChildRenderingProp = 'preventChildRendering';
+
+const CHUNK_TYPE_FUNCTION = 'function';
+const CHUNK_TYPE_ARRAY = 'array';
+const CHUNK_TYPE_ELEMENT = 'element';
+const CHUNK_TYPE_PROMISE = 'promise';
+const CHUNK_TYPE_UNDEFINED = 'undefined';
+const CHUNK_TYPE_TEXT = 'text';
 
 function getChunkType(chunk){
   if(isFunction(chunk)){
-    return 'function';
+    return CHUNK_TYPE_FUNCTION;
   } else if(chunk instanceof Array){
-    return 'array';
+    return CHUNK_TYPE_ARRAY;
   } else if(chunk instanceof Node){
-    return 'element';
+    return CHUNK_TYPE_ELEMENT;
   } else if(isPromise(chunk)){
-    return 'promise';
+    return CHUNK_TYPE_PROMISE;
   } else if(!isDefined(chunk)){
-    return 'undefined';
+    return CHUNK_TYPE_UNDEFINED;
   }
-  return 'text';
+  return CHUNK_TYPE_TEXT;
 }
 
 function replaceTokens(text, dataMap = []){
@@ -85,12 +97,46 @@ function applyClassFn(value, fn){
     return;
   }
   const chunkType = getChunkType(value);
-  if(chunkType === 'promise'){
+  if(chunkType === CHUNK_TYPE_PROMISE){
     return value.then((newValue) => applyClassFn(newValue, fn));
   }
-  let classesArray = chunkType === 'array' ? value : ('' + value).split(' ');
+  let classesArray = chunkType === CHUNK_TYPE_ARRAY ? value : ('' + value).split(' ');
   return classesArray.forEach((className) => fn(className));
 }
+
+function createVirtualElement(extend){
+  let classes = {};
+  const element = Object.assign({
+    props: noop,
+    tagName: null,
+    setAttribute: (name, value) => {
+      if(name === 'class'){
+        classes = value.split(' ').reduce((acc, className) => Object.assign(acc, {
+          [className]: true
+        }), {});
+      }
+    },
+    removeAttribute: noop,
+    classList: {
+      add: (value) => {
+        classes[value] = true;
+        element.className = Object.keys(classes).join(' ').trim();
+      },
+      remove: (value) => {
+        delete classes[value];
+        element.className = Object.keys(classes).join(' ').trim();
+      }
+    },
+    className: '',
+    attributes: [],
+    childNodes: [],
+    appendChild: noop,
+    isVirtual: true,
+    [preventChildRenderingProp]: true
+  }, extend);
+  return element;
+};
+
 
 function processNode($container){
   const nodeCopy = {
@@ -101,13 +147,14 @@ function processNode($container){
     childNodes: [],
   };
 
-  if($container.tagName){
-    nodeCopy.tagName = $container.tagName.toLowerCase().replace(sanitizeNodePrefix, '').toUpperCase();
-  }
+  const { attributes, childNodes } = nodeCopy;
 
   const childAttributes = $container.attributes || [];
   for(let j = 0; j < childAttributes.length; j++){
     const { name, value }  = childAttributes[j];
+    if(name === specialAttributeName){
+      continue;
+    }
 
     const nameIsDynamic = name.match(findChunksRegex);
     const valueIsDynamic = value.match(findChunksRegex);
@@ -120,34 +167,38 @@ function processNode($container){
         acc[className.match(findChunksRegex) ? 0 : 1].push(className);
         return acc;
       }, [[], []]);
-      nodeCopy.attributes.push({ name, value: initial.join(' ') });
-      dynamic.length && nodeCopy.attributes.push((target, cbk) => {
+      attributes.push({ name, value: initial.join(' ') });
+      dynamic.length && attributes.push((target) => {
         return (values, prevValues) => {
-          dynamic.forEach((className) => {
+          const updated = dynamic.reduce((acc, className) => {
             const matchClass = className.match(matchChunkRegex);
             const newValue = matchClass ? values[matchClass[2]] : replaceTokens(className, values);
             const oldValue = matchClass ? prevValues[matchClass[2]] : replaceTokens(className, prevValues);
             if(oldValue !== newValue){
               oldValue && applyClassFn(oldValue, (className) => target.classList.remove(className));
               newValue && applyClassFn(newValue, (className) => target.classList.add(className));
+              return true;
             }
-          });
+            return acc;
+          }, false);
+          return [{ key: 'className', value: target.className }, updated];
         };
       });
       continue;
     }
 
     if(nameIsDynamic || valueIsDynamic){
-      nodeCopy.attributes.push((target) => {
-        return (values, prevValues) => {
+      attributes.push((target) => {
+        return function update(values, prevValues){
           const preparedName = matchName ? values[matchName[2]] : replaceTokens(name, values);
           const preparedPrevName = matchName ? prevValues[matchName[2]] : replaceTokens(name, prevValues);
 
           const preparedValue = matchValue ? values[matchValue[2]] : replaceTokens(value, values);
           const preparedPrevValue = matchValue ? prevValues[matchValue[2]] : replaceTokens(value, prevValues);
 
+          const prop = { key: preparedName, value: preparedValue };
           if(preparedName === preparedPrevName && preparedValue === preparedPrevValue){
-            return;
+            return [prop, false];
           }
 
           if(preparedName !== preparedPrevName){
@@ -155,34 +206,34 @@ function processNode($container){
           }
 
           if(!preparedName){
-            return;
+            return [prop, true];
           }
 
+          prop[preparedName] = preparedValue;
           applyAttribute(target, { name: preparedName, value: preparedValue }, isBoolean($container[preparedName]));
-          return { [preparedName]: preparedValue };
-
+          return [prop, true];
         };
 
       });
     } else {
-      nodeCopy.attributes.push({ name, value, isBoolean: isBoolean($container[name]) });
+      attributes.push({ name, value, isBoolean: isBoolean($container[name]) });
     }
   }
 
-  const childNodes = $container.childNodes || [];
-  for(let i = 0; i < childNodes.length; i++){
-    const $childNode = childNodes[i];
+  const containerChildNodes = $container.childNodes || [];
+  for(let i = 0; i < containerChildNodes.length; i++){
+    const $childNode = containerChildNodes[i];
     if($childNode.nodeType === TEXT_NODE){
       const chunks = $childNode.textContent.split(findChunksRegex);
       chunks.filter(chunk => !!chunk).forEach((chunk) => {
         const match = chunk.match(matchChunkRegex);
         if(match){
           const matchIndex = match[2];
-          nodeCopy.childNodes.push((range) => {
+          childNodes.push((range) => {
             return (values) => render(values[matchIndex], range);
           });
         } else {
-          nodeCopy.childNodes.push({
+          childNodes.push({
             nodeType: TEXT_NODE,
             textContent: chunk,
           });
@@ -192,7 +243,7 @@ function processNode($container){
     }
     if($childNode.nodeType === COMMENT_NODE){
       if($childNode.textContent.match(findChunksRegex)){
-        nodeCopy.childNodes.push((range) => {
+        childNodes.push((range) => {
           const $element = document.createComment('');
           const content = $childNode.textContent;
           range.appendChild($element);
@@ -201,15 +252,60 @@ function processNode($container){
           };
         });
       } else {
-        nodeCopy.childNodes.push({
+        childNodes.push({
           nodeType: COMMENT_NODE,
           textContent: $childNode.textContent,
         });
       }
       continue;
     }
-    nodeCopy.childNodes.push(processNode($childNode));
+    childNodes.push(processNode($childNode));
   }
+
+  const tagName = $container.tagName;
+  if(tagName === specialTagName.toUpperCase()){
+    const chunkName = $container.attributes[specialAttributeName].value;
+    const matchChunk = chunkName.match(matchChunkRegex);
+
+    return (range) => {
+      let update;
+      return (values, prevValues) => {
+        const newValue = matchChunk ? values[matchChunk[2]] : replaceTokens(chunkName, values);
+        const oldValue = matchChunk ? prevValues[matchChunk[2]] : replaceTokens(chunkName, prevValues);
+
+        if(update && newValue === oldValue){
+          return update(values);
+        }
+        const chunkType = getChunkType(newValue);
+
+        const container = {
+          childNodes: [Object.assign({}, nodeCopy, {
+            tagName: newValue
+          })]
+        };
+
+        if(chunkType === CHUNK_TYPE_FUNCTION){
+          const target = {
+            appendChild: noop,
+            replaceChild: noop,
+            childNodes: [createVirtualElement({
+              props: (value) => render(newValue(value), range)
+            })]
+          };
+          [update] = morph(container, target);
+          return update(values);
+        }
+
+        const [newUpdate, initialRender] = morph(container, range, { useDocFragment: true });
+        newUpdate(values);
+        initialRender();
+        update = newUpdate;
+      };
+    };
+  } else if(tagName){
+    nodeCopy.tagName = $container.tagName.toLowerCase().replace(sanitizeNodePrefix, '').toUpperCase();
+  }
+
 
   return nodeCopy;
 }
@@ -234,6 +330,20 @@ function sanitize(str){
   return str.replace(sanitizeTagsRegex, `<$1${sanitizeNodePrefix}$2`);
 };
 
+function getDynamicTagsRegex(groupMatches = false){
+  const tokenRegEx = `(${regExpEscape(PREFIX)}([^ >]+)${regExpEscape(POSTFIX)})`;
+  return new RegExp(`(<([ /])?)(([^ >]+)?(${tokenRegEx})([a-zA-Z0-9-_]+)?)(([ ][^])?>)?`, 'igm');
+}
+
+function replaceDynamicTags(str){
+  return str.replace(dynamicTagsRegex, (...args) => {
+    const [_, opening, isClosing, chunkName, __, ___, suffix, ____, _____, closing] = args;
+    return isClosing
+      ? `</${specialTagName}>`
+      : `${opening}${specialTagName} ${specialAttributeName}="${chunkName}"${closing || ''}`
+  });
+};
+
 function openSelfClosingTags(str){
   return str.replace(selfClosingRegex, '<$1$2></$1>');
 };
@@ -245,8 +355,8 @@ export function render(value, range = document.createDocumentFragment()){
   if(lastChunk === value){
     return range;
   }
-  if(chunkType === 'promise'){
-    chunkProcessingFunctions['promise'](range, value);
+  if(chunkType === CHUNK_TYPE_PROMISE){
+    chunkProcessingFunctions[CHUNK_TYPE_PROMISE](range, value);
     return range;
   }
   if(lastRenderedChunkType !== chunkType){
@@ -266,7 +376,7 @@ export function render(value, range = document.createDocumentFragment()){
 };
 
 const chunkProcessingFunctions = {
-  'array': function processArrayChunk(range, value){
+  [CHUNK_TYPE_ARRAY]: function processArrayChunk(range, value){
     const preprocessedChunksContainer = {
       childNodes: [].concat(value).map((chunk, index) => {
         return (range) => (values) => render(values[index], range);
@@ -282,13 +392,13 @@ const chunkProcessingFunctions = {
       update(newValue);
     }
   },
-  'undefined': emptyNode,
-  'text': (range, value) => {
+  [CHUNK_TYPE_UNDEFINED]: emptyNode,
+  [CHUNK_TYPE_TEXT]: (range, value) => {
     const textNode = document.createTextNode(value);
     range.appendChild(textNode);
     return (value) => textNode.textContent = value;
   },
-  'element': (range, value) => {
+  [CHUNK_TYPE_ELEMENT]: (range, value) => {
     range.appendChild(value);
     return (value) => {
       if(range.childNodes.length > 1){
@@ -297,13 +407,13 @@ const chunkProcessingFunctions = {
       range.replaceChild(value, range.childNodes[0]);
     }
   },
-  'promise': (range, value) => {
+  [CHUNK_TYPE_PROMISE]: (range, value) => {
     value.then((response) => {
       range.update();
       render(response, range);
     });
   },
-  'function': (range, value) => {
+  [CHUNK_TYPE_FUNCTION]: (range, value) => {
     let result = value(range);
     return (value) => {
       result = value(range, result);
@@ -311,7 +421,7 @@ const chunkProcessingFunctions = {
   },
 };
 
-function copyAttributes(target, source){
+function copyAttributes(target, source, interceptChildrenRendering){
   const sourceAttributes = source.attributes;
   const targetAttributes = target.attributes;
 
@@ -334,25 +444,50 @@ function copyAttributes(target, source){
     const { name, value, isBoolean } = attr;
 
     applyAttribute(target, { name, value }, isBoolean);
-    props[name] = value;
+    props[name === 'class' ? 'className' : name] = value;
+  }
+
+  if(target[preventChildRenderingProp]){
+    updates.push((values, prevValues) => {
+      const children = (range, update) => {
+        if(update){
+          update(values);
+          return update;
+        }
+        const [newUpdate, initialRender] = morph(source, range, { useDocFragment: true });
+        newUpdate(values);
+        initialRender();
+        return newUpdate;
+      };
+      return [{ key: 'children', value: children }, true];
+    });
   }
 
   if('props' in target){
+    const setProps = isFunction(target.props)
+      ? target.props
+      : (props, updated) => updated && (target.props = props);
     if(updates.length){
       return [(values, prevValues) => {
-        const dynamicProps = updates.reduce((acc, u) => Object.assign(acc, u(values, prevValues)), {});
-        if(Object.keys(dynamicProps).length){
-          target.props = Object.assign(props, dynamicProps);
-        }
+        const [newProps, updated] = updates.reduce(([props, accUpdated], u) => {
+          const [{ key, value }, updated] = u(values, prevValues);
+          const prop = (typeof key === 'string' || typeof key === 'number') ? { [key]: value } : {};
+          return [Object.assign({}, props, prop), accUpdated || updated];
+        }, [props, false]);
+        setProps(newProps, updated);
       }];
     }
-    target.props = props;
+    setProps(props, true);
   }
   return updates;
 
 }
 
 export function morph($source, $target, options = {}){
+
+  if($target[preventChildRenderingProp]){
+    return [noop, []];
+  }
 
   let updates = [];
 
@@ -419,13 +554,20 @@ export function morph($source, $target, options = {}){
           break;
         case ELEMENT_NODE:
           const namespaceURI = $sourceElement.namespaceURI;
-          const tagName = $sourceElement.tagName.toLowerCase();
-          const newChild = namespaceURI === DEFAULT_NAMESPACE_URI
-            ? document.createElement(tagName)
-            : document.createElementNS(namespaceURI, tagName);
+          const tagName = $sourceElement.tagName;
 
-          updates = updates
-            .concat(morph($sourceElement, newChild)[0])
+          let newChild;
+          let morphUpdates = [];
+          if($targetElement && $targetElement[preventChildRenderingProp]){
+            newChild = $targetElement;
+          } else {
+            newChild = namespaceURI === DEFAULT_NAMESPACE_URI
+              ? document.createElement(tagName.toLowerCase())
+              : document.createElementNS(namespaceURI, tagName.toLowerCase());
+
+          }
+
+          updates = updates.concat(morph($sourceElement, newChild)[0])
             .concat(copyAttributes(newChild, $sourceElement));
 
           domFn(newChild);
@@ -477,7 +619,7 @@ export function html(chunks = [], ...values){
 
   if(!isDefined(cached)){
     const template = prepareLiterals(chunks);
-    container = generateContainer(sanitize(openSelfClosingTags(template)));
+    container = generateContainer(sanitize(openSelfClosingTags(replaceDynamicTags(template))));
     templatesCache[templateId] = container;
   } else {
     container = cached;
@@ -510,14 +652,17 @@ export function stopNode(){};
 if(process.env.NODE_ENV === 'test'){
   Object.assign(module.exports, {
     replaceTokens, processNode, generateContainer,
-    sanitize, copyAttributes, prepareLiterals, openSelfClosingTags,
+    sanitize, copyAttributes, prepareLiterals, openSelfClosingTags, replaceDynamicTags,
     setPrefix: (value) => PREFIX = value,
     setPostfix: (value) => POSTFIX = value,
     setSanitizeNodePrefix: (value) => sanitizeNodePrefix = value,
+    setSpecialTagName: (value) => specialTagName = value,
+    setSpecialAttributeName: (value) => specialAttributeName = value,
     updateChunkRegexes: () => {
       findChunksRegex = new RegExp(getTokenRegExp(), 'ig');
       replaceChunkRegex = new RegExp(getTokenRegExp(true), 'ig');
       matchChunkRegex = new RegExp(`^${getTokenRegExp(true)}$`);
+      dynamicTagsRegex = getDynamicTagsRegex();
     }
   });
 }

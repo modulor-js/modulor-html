@@ -327,7 +327,7 @@ describe('component props', () => {
     });
 
     const tplF = (scope) => html`
-      <my-test-component-f attr="123" value="${scope.value}" foo="${scope.foo}"></my-test-component-f>
+      <my-test-component-f attr="123" value="${scope.value}" foo="${scope.foo}" ${scope.value2}="val"></my-test-component-f>
     `;
 
     const container = document.createElement('div');
@@ -348,6 +348,7 @@ describe('component props', () => {
 
     render(tplF({
       value: 'baz',
+      value2: 'dynamicProp',
       foo: 'bar'
     }), container);
 
@@ -355,6 +356,7 @@ describe('component props', () => {
     expect(propsSetterSpy).toHaveBeenCalledWith({
       attr: '123',
       value: 'baz',
+      dynamicProp: 'val',
       foo: 'bar'
     });
 
@@ -365,7 +367,11 @@ describe('component props', () => {
       foo: 'bar'
     }), container);
 
-    expect(propsSetterSpy).not.toHaveBeenCalled();
+    expect(propsSetterSpy).toHaveBeenCalledWith({
+      attr: '123',
+      value: 'baz',
+      foo: 'bar'
+    });
 
     propsSetterSpy.mockReset();
 
@@ -380,6 +386,166 @@ describe('component props', () => {
       value: 'baz',
       foo: 'quux'
     });
+  });
+
+  it('calls props if it is a function on every render', () => {
+
+    const propsSetterSpy = jest.fn();
+
+    customElements.define('my-test-component-g', class extends HTMLElement {
+      props(...args){
+        propsSetterSpy(...args);
+      }
+    });
+
+    const tplF = (scope) => html`
+      <my-test-component-g attr="123" value="${scope.value}" foo="${scope.foo}" ${scope.value2}="val" />
+    `;
+
+    const container = document.createElement('div');
+
+    render(tplF({
+      value: 'bla',
+      foo: 'bar'
+    }), container);
+
+    expect(propsSetterSpy).toHaveBeenCalledTimes(1);
+    expect(propsSetterSpy).toHaveBeenCalledWith({
+      attr: '123',
+      value: 'bla',
+      foo: 'bar'
+    }, true);
+
+
+    render(tplF({
+      value: 'bla',
+      foo: 'bar'
+    }), container);
+
+    expect(propsSetterSpy).toHaveBeenCalledTimes(2);
+    expect(propsSetterSpy).toHaveBeenCalledWith({
+      attr: '123',
+      value: 'bla',
+      foo: 'bar'
+    }, false);
+
+
+    render(tplF({
+      value: 'baz',
+      value2: 'dynamicProp',
+      foo: 'bar'
+    }), container);
+
+    expect(propsSetterSpy).toHaveBeenCalledTimes(3);
+    expect(propsSetterSpy).toHaveBeenCalledWith({
+      attr: '123',
+      value: 'baz',
+      dynamicProp: 'val',
+      foo: 'bar'
+    }, true);
+
+
+    render(tplF({
+      value: 'baz',
+      foo: 'bar'
+    }), container);
+
+    expect(propsSetterSpy).toHaveBeenCalledTimes(4);
+    expect(propsSetterSpy).toHaveBeenCalledWith({
+      attr: '123',
+      value: 'baz',
+      foo: 'bar'
+    }, true);
+
+
+    render(tplF({
+      value: 'baz',
+      foo: 'quux'
+    }), container);
+
+    expect(propsSetterSpy).toHaveBeenCalledTimes(5);
+    expect(propsSetterSpy).toHaveBeenCalledWith({
+      attr: '123',
+      value: 'baz',
+      foo: 'quux'
+    }, true);
+  });
+
+  it('intercepts children rendering correctly', () => {
+
+    const propsSetterSpyIntercept = jest.fn();
+    const propsSetterSpy = jest.fn();
+
+    const $renderContainer = document.createElement('div');
+
+    const renderContainer = ({ children }) => {
+      render(children, $renderContainer);
+    };
+
+    customElements.define('my-test-component-h', class extends HTMLElement {
+      props(props, updated){
+        propsSetterSpyIntercept(props);
+        renderContainer(props);
+      }
+      get preventChildRendering(){
+        return true;
+      }
+    });
+
+    customElements.define('my-test-component-i', class extends HTMLElement {
+      props(props, updated){
+        propsSetterSpy(props);
+      }
+    });
+
+    const tplF = (scope) => html`
+      <my-test-component-h foo="${scope.foo}">
+        <span class="test">${scope.bar}</span>
+      </my-test-component-h>
+      <my-test-component-i foo="${scope.foo}">
+        <span class="test"></span>
+      </my-test-component-i>
+    `;
+
+    const container = document.createElement('div');
+
+    render(tplF({ foo: 'bar', bar: 'baz' }), container);
+
+    expect(propsSetterSpyIntercept).toHaveBeenCalledWith({
+      foo: 'bar',
+      children: expect.any(Function)
+    });
+
+    expect(propsSetterSpy).toHaveBeenCalledWith({
+      foo: 'bar'
+    });
+
+    expect(container.querySelector('my-test-component-h .test')).toBe(null);
+    expect($renderContainer.innerHTML).toEqual(`
+        <span class="test">baz</span>
+      `);
+    expect(container.querySelector('my-test-component-i .test')).not.toBe(null);
+
+    propsSetterSpyIntercept.mockReset();
+    propsSetterSpy.mockReset();
+
+    render(tplF({ foo: 'bla', bar: 'quux' }), container);
+
+    expect(propsSetterSpyIntercept).toHaveBeenCalledWith({
+      foo: 'bla',
+      children: expect.any(Function)
+    });
+
+    expect(propsSetterSpy).toHaveBeenCalledWith({
+      foo: 'bla'
+    });
+
+    expect(container.querySelector('my-test-component-h .test')).toBe(null);
+    expect($renderContainer.innerHTML).toEqual(`
+        <span class="test">quux</span>
+      `);
+    expect(container.querySelector('my-test-component-i .test')).not.toBe(null);
+
   });
 
 });
