@@ -22,8 +22,9 @@ let sanitizeNodePrefix = `modulor_sanitize_node_${+(new Date())}:`;
 const sanitizeTags = ['table', 'tr', 'td', 'style'];
 const sanitizeTagsRegex = new RegExp(`<([ /])?(${sanitizeTags.join('|')})([ ][^]>)?`, 'igm');
 
-const specialTagName = `modulor-special-tag-${+new Date()}`;
-const dynamicTagsRegex = new RegExp(`<([ /])?(${getTokenRegExp()})([ ][^]>)?`, 'igm');
+let specialTagName = `modulor-dynamic-tag-${+new Date()}`;
+let specialAttributeName = `modulor-chunk-${+new Date()}`;
+let dynamicTagsRegex = new RegExp(`<([ /])?(${getTokenRegExp()})([ ][^]>)?`, 'igm');
 
 const selfClosingRegex = /<([^\s]+)([ ].+)?\/([ ]+)?>/igm;
 
@@ -239,7 +240,12 @@ function sanitize(str){
 };
 
 function replaceDynamicTags(str){
-  return str.replace(dynamicTagsRegex, `<$1${specialTagName} chunk-name="$2" `);
+  //measure performance
+  //return str.replace(dynamicTagsRegex, `<$1${specialTagName} ${specialAttributeName}="$2" `);
+  return str.replace(dynamicTagsRegex, (_, closing, chunkName) =>
+    `<${closing || ''}${specialTagName}` +
+    (closing ? '' : ` ${specialAttributeName}="${chunkName}"`)
+  );
 };
 
 function openSelfClosingTags(str){
@@ -518,14 +524,17 @@ export function stopNode(){};
 if(process.env.NODE_ENV === 'test'){
   Object.assign(module.exports, {
     replaceTokens, processNode, generateContainer,
-    sanitize, copyAttributes, prepareLiterals, openSelfClosingTags,
+    sanitize, copyAttributes, prepareLiterals, openSelfClosingTags, replaceDynamicTags,
     setPrefix: (value) => PREFIX = value,
     setPostfix: (value) => POSTFIX = value,
     setSanitizeNodePrefix: (value) => sanitizeNodePrefix = value,
+    setSpecialTagName: (value) => specialTagName = value,
+    setSpecialAttributeName: (value) => specialAttributeName = value,
     updateChunkRegexes: () => {
       findChunksRegex = new RegExp(getTokenRegExp(), 'ig');
       replaceChunkRegex = new RegExp(getTokenRegExp(true), 'ig');
       matchChunkRegex = new RegExp(`^${getTokenRegExp(true)}$`);
+      dynamicTagsRegex = new RegExp(`<([ /])?(${getTokenRegExp()})([ ][^]>)?`, 'igm');
     }
   });
 }

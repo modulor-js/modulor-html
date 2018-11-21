@@ -1,10 +1,13 @@
 import {
-  html, prepareLiterals, replaceTokens, sanitize, openSelfClosingTags, setPrefix, setPostfix, setSanitizeNodePrefix, updateChunkRegexes
+  html, prepareLiterals, replaceTokens, sanitize, openSelfClosingTags, replaceDynamicTags,
+  setPrefix, setPostfix, setSanitizeNodePrefix, updateChunkRegexes, setSpecialTagName, setSpecialAttributeName
 } from '../../src/html';
 
 setPrefix('{modulor_html_chunk:');
 setPostfix('}');
 setSanitizeNodePrefix('sanitize:');
+setSpecialTagName('modulor-dynamic-tag');
+setSpecialAttributeName('modulor-chunk');
 updateChunkRegexes();
 
 it('is a function', () => {
@@ -171,6 +174,70 @@ describe('open self closing tags', () => {
   testSets.forEach((testSet, index) => {
     it(`set #${index}`, () => {
       expect(openSelfClosingTags(testSet.input)).toBe(testSet.expectation);
+    });
+  })
+});
+
+
+describe('replaceDynamicTags', () => {
+
+  const testSets = [
+    {
+      input: '<{modulor_html_chunk:1}></{modulor_html_chunk:2}>',
+      expectation: '<modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:1}"></modulor-dynamic-tag>'
+    },
+    //{
+      //input: '<table attr-one="1"></table>',
+      //expectation: '<sanitize:table attr-one="1"></sanitize:table>'
+    //},
+    //{
+      //input: `<table attr-one="1"
+      //foo=bar bla baz="ok"
+      //></table>`,
+      //expectation: `<sanitize:table attr-one="1"
+      //foo=bar bla baz="ok"
+      //></sanitize:table>`
+    //},
+    //{
+      //input: `
+        //<table>
+          //<tr>
+            //<td>foo</td>
+            //<td></td>
+          //</tr>
+          //<tr>
+            //<td><div></div></td>
+          //</tr>
+        //</table>
+      //`,
+      //expectation: `
+        //<sanitize:table>
+          //<sanitize:tr>
+            //<sanitize:td>foo</sanitize:td>
+            //<sanitize:td></sanitize:td>
+          //</sanitize:tr>
+          //<sanitize:tr>
+            //<sanitize:td><div></div></sanitize:td>
+          //</sanitize:tr>
+        //</sanitize:table>
+      //`
+    //},
+    //{
+      //input: `
+        //<style>
+          //.foo > .bar {  }
+        //</style>
+      //`,
+      //expectation: `
+        //<sanitize:style>
+          //.foo > .bar {  }
+        //</sanitize:style>
+      //`
+    //},
+  ]
+  testSets.forEach((testSet, index) => {
+    it(`set #${index}`, () => {
+      expect(replaceDynamicTags(testSet.input)).toBe(testSet.expectation);
     });
   })
 });
