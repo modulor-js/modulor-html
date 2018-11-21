@@ -22,11 +22,15 @@ let sanitizeNodePrefix = `modulor_sanitize_node_${+(new Date())}:`;
 const sanitizeTags = ['table', 'tr', 'td', 'style'];
 const sanitizeTagsRegex = new RegExp(`<([ /])?(${sanitizeTags.join('|')})([ ][^]>)?`, 'igm');
 
+const specialTagName = `modulor-special-tag-${+new Date()}`;
+const dynamicTagsRegex = new RegExp(`<([ /])?(${getTokenRegExp()})([ ][^]>)?`, 'igm');
+
 const selfClosingRegex = /<([^\s]+)([ ].+)?\/([ ]+)?>/igm;
 
 let findChunksRegex = new RegExp(getTokenRegExp(), 'ig');
 let replaceChunkRegex = new RegExp(getTokenRegExp(true), 'ig');
 let matchChunkRegex = new RegExp(`^${getTokenRegExp(true)}$`);
+
 
 
 function getChunkType(chunk){
@@ -232,6 +236,10 @@ function getTokenRegExp(groupMatches){
 
 function sanitize(str){
   return str.replace(sanitizeTagsRegex, `<$1${sanitizeNodePrefix}$2`);
+};
+
+function replaceDynamicTags(str){
+  return str.replace(dynamicTagsRegex, `<$1${specialTagName} chunk-name="$2" `);
 };
 
 function openSelfClosingTags(str){
@@ -477,7 +485,7 @@ export function html(chunks = [], ...values){
 
   if(!isDefined(cached)){
     const template = prepareLiterals(chunks);
-    container = generateContainer(sanitize(openSelfClosingTags(template)));
+    container = generateContainer(sanitize(openSelfClosingTags(replaceDynamicTags(template))));
     templatesCache[templateId] = container;
   } else {
     container = cached;
