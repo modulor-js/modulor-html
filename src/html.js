@@ -24,7 +24,7 @@ const sanitizeTagsRegex = new RegExp(`<([ /])?(${sanitizeTags.join('|')})([ ][^]
 
 let specialTagName = `modulor-dynamic-tag-${+new Date()}`;
 let specialAttributeName = `modulor-chunk-${+new Date()}`;
-let dynamicTagsRegex = new RegExp(`<([ /])?(${getTokenRegExp()})([ ][^]>)?`, 'igm');
+let dynamicTagsRegex = getDynamicTagsRegex();
 
 const selfClosingRegex = /<([^\s]+)([ ].+)?\/([ ]+)?>/igm;
 
@@ -33,6 +33,9 @@ let replaceChunkRegex = new RegExp(getTokenRegExp(true), 'ig');
 let matchChunkRegex = new RegExp(`^${getTokenRegExp(true)}$`);
 
 
+function getDynamicTagsRegex(){
+  return new RegExp(`(<([ /])?)(([a-zA-Z0-9-_]+)?(${getTokenRegExp()})([a-zA-Z0-9-_]+)?)(([ ][^])?>)?`, 'igm');
+}
 
 function getChunkType(chunk){
   if(isFunction(chunk)){
@@ -240,12 +243,11 @@ function sanitize(str){
 };
 
 function replaceDynamicTags(str){
-  //measure performance
-  //return str.replace(dynamicTagsRegex, `<$1${specialTagName} ${specialAttributeName}="$2" `);
-  return str.replace(dynamicTagsRegex, (_, closing, chunkName) =>
-    `<${closing || ''}${specialTagName}` +
-    (closing ? '' : ` ${specialAttributeName}="${chunkName}"`)
-  );
+  return str.replace(dynamicTagsRegex, (_, opening, isClosing, chunkName, a, b, suffix, c, closing) => {
+    return isClosing
+      ? `</${specialTagName}>`
+      : `${opening}${specialTagName} ${specialAttributeName}="${chunkName}"${closing || ''}`
+  });
 };
 
 function openSelfClosingTags(str){
@@ -534,7 +536,7 @@ if(process.env.NODE_ENV === 'test'){
       findChunksRegex = new RegExp(getTokenRegExp(), 'ig');
       replaceChunkRegex = new RegExp(getTokenRegExp(true), 'ig');
       matchChunkRegex = new RegExp(`^${getTokenRegExp(true)}$`);
-      dynamicTagsRegex = new RegExp(`<([ /])?(${getTokenRegExp()})([ ][^]>)?`, 'igm');
+      dynamicTagsRegex = getDynamicTagsRegex();
     }
   });
 }
