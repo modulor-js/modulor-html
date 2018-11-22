@@ -33,10 +33,6 @@ let replaceChunkRegex = new RegExp(getTokenRegExp(true), 'ig');
 let matchChunkRegex = new RegExp(`^${getTokenRegExp(true)}$`);
 
 
-function getDynamicTagsRegex(){
-  return new RegExp(`(<([ /])?)(([a-zA-Z0-9-_]+)?(${getTokenRegExp()})([a-zA-Z0-9-_]+)?)(([ ][^])?>)?`, 'igm');
-}
-
 function getChunkType(chunk){
   if(isFunction(chunk)){
     return 'function';
@@ -109,7 +105,24 @@ function processNode($container){
     childNodes: [],
   };
 
-  if($container.tagName){
+  const tagName = $container.tagName;
+  if(tagName === specialTagName.toUpperCase()){
+    const chunkName = $container.attributes[specialAttributeName].value;
+    const chunkIsDynamic = chunkName.match(findChunksRegex);
+    const matchChunk = chunkName.match(matchChunkRegex);
+
+    nodeCopy.childNodes.push((range) => {
+      return (values, prevValues) => {
+        const newValue = matchChunk ? values[matchChunk[2]] : replaceTokens(chunkName, values);
+        //const oldValue = matchChunk ? prevValues[matchChunk[2]] : replaceTokens(chunkName, prevValues);
+        const chunkType = getChunkType(newValue);
+        console.log(newValue, /*oldValue, <][>chunkName, */chunkType);
+      };
+    });
+
+    nodeCopy.tagName = $container.tagName.toLowerCase().replace(sanitizeNodePrefix, '').toUpperCase();
+    return nodeCopy;
+  } else if(tagName){
     nodeCopy.tagName = $container.tagName.toLowerCase().replace(sanitizeNodePrefix, '').toUpperCase();
   }
 
@@ -242,8 +255,14 @@ function sanitize(str){
   return str.replace(sanitizeTagsRegex, `<$1${sanitizeNodePrefix}$2`);
 };
 
+function getDynamicTagsRegex(groupMatches = false){
+  const tokenRegEx = `(${regExpEscape(PREFIX)}([^ >]+)${regExpEscape(POSTFIX)})`;
+  return new RegExp(`(<([ /])?)(([^ >]+)?(${tokenRegEx})([a-zA-Z0-9-_]+)?)(([ ][^])?>)?`, 'igm');
+}
+
 function replaceDynamicTags(str){
-  return str.replace(dynamicTagsRegex, (_, opening, isClosing, chunkName, a, b, suffix, c, closing) => {
+  return str.replace(dynamicTagsRegex, (...args) => {
+    const [_, opening, isClosing, chunkName, __, ___, suffix, ____, _____, closing] = args;
     return isClosing
       ? `</${specialTagName}>`
       : `${opening}${specialTagName} ${specialAttributeName}="${chunkName}"${closing || ''}`

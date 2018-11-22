@@ -5,22 +5,21 @@ describe('experiment', () => {
 
   it('bla', async () => {
 
-    //const container = document.createElement('div');
-    ////const container2 = document.createElement('div');
+    const container = document.createElement('div');
+    //const container2 = document.createElement('div');
 
-    //const tpl = (scope) => html`
-      //${scope.a.map((item, index) => html`
-        //<span class="foo foo-${index} bar-${item}">${item}</span>
-      //`)}
+    const tpl = (scope) => html`
+      <x-${'div'}-${'y'}-z/>
+      <${'div'}/>
+    `;
+
+    //const tpl2 = (scope) => html`
+      //<span bla="${scope.a}">${scope.b}</div>
     //`;
 
-    ////const tpl2 = (scope) => html`
-      ////<span bla="${scope.a}">${scope.b}</div>
-    ////`;
+    //const rr = tpl2({ a: 1});
 
-    ////const rr = tpl2({ a: 1});
-
-    //render(tpl({ a: [1,2,3] }), container);
+    render(tpl({ a: [1,2,3] }), container);
     //console.log(container.innerHTML);
     //render(tpl({ a: [3,4,5] }), container);
     //console.log(container.innerHTML);

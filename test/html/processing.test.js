@@ -211,6 +211,10 @@ describe('replaceDynamicTags', () => {
       expectation: '<modulor-dynamic-tag modulor-chunk="x-{modulor_html_chunk:1}-test" foo="bar"></modulor-dynamic-tag>'
     },
     {
+      input: '<x-{modulor_html_chunk:1}-test-{modulor_html_chunk:2} foo="bar"></x-{modulor_html_chunk:3}>',
+      expectation: '<modulor-dynamic-tag modulor-chunk="x-{modulor_html_chunk:1}-test-{modulor_html_chunk:2}" foo="bar"></modulor-dynamic-tag>'
+    },
+    {
       input: `
         <{modulor_html_chunk:0}>
           <{modulor_html_chunk:1}>
@@ -280,7 +284,7 @@ describe('replaceDynamicTags', () => {
     },
   ]
   testSets.forEach((testSet, index) => {
-    it.only(`set #${index}`, () => {
+    it(`set #${index}`, () => {
       expect(replaceDynamicTags(testSet.input)).toBe(testSet.expectation);
     });
   })
