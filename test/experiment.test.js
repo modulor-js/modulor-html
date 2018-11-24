@@ -7,11 +7,18 @@ describe('experiment', () => {
 
     const container = document.createElement('div');
     //const container2 = document.createElement('div');
+    const comp = ({ props, children }) => {
+      console.log(props);
+      //return children;
+      return html`
+        <div>${props.foo}</div>
+      `;
+    };
 
     const tpl = (scope) => html`
-      <x-${scope.a[1]}-z>
+      <${comp} foo="${scope.a[0]}">
         <div>${scope.a[0]}</div>
-      </x-${scope.a[1]}-z>
+      </${comp}>
     `;
 
     //const tpl2 = (scope) => html`

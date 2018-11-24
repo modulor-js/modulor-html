@@ -226,20 +226,49 @@ function processNode($container){
         const newValue = matchChunk ? values[matchChunk[2]] : replaceTokens(chunkName, values);
         const oldValue = matchChunk ? prevValues[matchChunk[2]] : replaceTokens(chunkName, prevValues);
         const fn = (range, update) => {
+          if(update && newValue === oldValue){
+            update(values);
+            return update;
+          }
           const chunkType = getChunkType(newValue);
-          if(chunkType === 'text'){
-            if(update && newValue === oldValue){
-              update(values);
-              return update;
+          if(chunkType === 'promise'){
+          }
+          if(chunkType === 'function'){
+            //maybe extract fakeEl
+            const fakeEl = {
+              setAttribute: (name, value) => {
+                //noop
+              },
+              removeAttribute: (name, value) => {
+                //noop
+              },
+              props: {},
+              attributes: []
             }
+            const attrUpdates = copyAttributes(fakeEl, nodeCopy);
+
+            attrUpdates.forEach(update => update(values, prevValues));
+            render(newValue({
+              props: fakeEl.props,
+              children: childNodes //better pass function or fragment
+            }), range);
+            return (newValues) => {
+              attrUpdates.forEach(update => update(newValues, values));
+              render(newValue({
+                props: fakeEl.props,
+                children: childNodes //better pass function or fragment
+              }), range);
+            };
+          }
+          if(chunkType === 'text'){
             const container = {
               childNodes: [Object.assign({}, nodeCopy, {
                 tagName: newValue
               })]
             }
-            const updates = morph(container, range, { useDocFragment: true });
-            updates[1]();
-            return updates[0];
+            const [newUpdate, initialRender] = morph(container, range, { useDocFragment: true });
+            initialRender();
+            return newUpdate;
           }
         }
         render(fn, range)
