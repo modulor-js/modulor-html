@@ -1,4 +1,4 @@
-import { html, render, r, stopNode, Template, containersMap } from '../src/html';
+import { html, render, r, stopNode, Template, containersMap } from '@modulor-js/html';
 
 
 describe('experiment', () => {
@@ -9,8 +9,9 @@ describe('experiment', () => {
     //const container2 = document.createElement('div');
 
     const tpl = (scope) => html`
-      <x-${'div'}-${'y'}-z/>
-      <${'div'}/>
+      <x-${scope.a[1]}-z>
+        <div>${scope.a[0]}</div>
+      </x-${scope.a[1]}-z>
     `;
 
     //const tpl2 = (scope) => html`
@@ -19,8 +20,11 @@ describe('experiment', () => {
 
     //const rr = tpl2({ a: 1});
 
-    render(tpl({ a: [1,2,3] }), container);
-    //console.log(container.innerHTML);
+    render(tpl({ a: [1,6,3] }), container);
+    render(tpl({ a: [2,6,3] }), container);
+    render(tpl({ a: [3,7,3] }), container);
+    //render(tpl({ a: [1,2,3] }), container);
+    console.log(container.innerHTML);
     //render(tpl({ a: [3,4,5] }), container);
     //console.log(container.innerHTML);
     //render(tpl({ a: 1, c: 1 }), container);

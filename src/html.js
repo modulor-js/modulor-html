@@ -105,30 +105,12 @@ function processNode($container){
     childNodes: [],
   };
 
-  const tagName = $container.tagName;
-  if(tagName === specialTagName.toUpperCase()){
-    const chunkName = $container.attributes[specialAttributeName].value;
-    const chunkIsDynamic = chunkName.match(findChunksRegex);
-    const matchChunk = chunkName.match(matchChunkRegex);
-
-    nodeCopy.childNodes.push((range) => {
-      return (values, prevValues) => {
-        const newValue = matchChunk ? values[matchChunk[2]] : replaceTokens(chunkName, values);
-        //const oldValue = matchChunk ? prevValues[matchChunk[2]] : replaceTokens(chunkName, prevValues);
-        const chunkType = getChunkType(newValue);
-        console.log(newValue, /*oldValue, <][>chunkName, */chunkType);
-      };
-    });
-
-    nodeCopy.tagName = $container.tagName.toLowerCase().replace(sanitizeNodePrefix, '').toUpperCase();
-    return nodeCopy;
-  } else if(tagName){
-    nodeCopy.tagName = $container.tagName.toLowerCase().replace(sanitizeNodePrefix, '').toUpperCase();
-  }
-
   const childAttributes = $container.attributes || [];
   for(let j = 0; j < childAttributes.length; j++){
     const { name, value }  = childAttributes[j];
+    if(name === specialAttributeName){
+      continue;
+    }
 
     const nameIsDynamic = name.match(findChunksRegex);
     const valueIsDynamic = value.match(findChunksRegex);
@@ -231,6 +213,42 @@ function processNode($container){
     }
     nodeCopy.childNodes.push(processNode($childNode));
   }
+
+  const tagName = $container.tagName;
+  if(tagName === specialTagName.toUpperCase()){
+    const chunkName = $container.attributes[specialAttributeName].value;
+    const matchChunk = chunkName.match(matchChunkRegex);
+
+    const childNodes = nodeCopy.childNodes;
+    const attributes = nodeCopy.attributes;
+    return (range) => {
+      return (values, prevValues) => {
+        const newValue = matchChunk ? values[matchChunk[2]] : replaceTokens(chunkName, values);
+        const oldValue = matchChunk ? prevValues[matchChunk[2]] : replaceTokens(chunkName, prevValues);
+        const fn = (range, update) => {
+          const chunkType = getChunkType(newValue);
+          if(chunkType === 'text'){
+            if(update && newValue === oldValue){
+              update(values);
+              return update;
+            }
+            const container = {
+              childNodes: [Object.assign({}, nodeCopy, {
+                tagName: newValue
+              })]
+            }
+            const updates = morph(container, range, { useDocFragment: true });
+            updates[1]();
+            return updates[0];
+          }
+        }
+        render(fn, range)
+      };
+    };
+  } else if(tagName){
+    nodeCopy.tagName = $container.tagName.toLowerCase().replace(sanitizeNodePrefix, '').toUpperCase();
+  }
+
 
   return nodeCopy;
 }
