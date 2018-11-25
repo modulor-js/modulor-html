@@ -802,4 +802,81 @@ describe('dynamic tags', () => {
     });
   });
 
+  describe('function value', () => {
+    describe('props handling', () => {
+
+      const $container = document.createElement('div');
+      const Component = jest.fn();
+
+      it('handles simple attributes', () => {
+
+        const tpl = (values) => html`
+          <${Component} foo="xxx" ${values[0]}="yyy" ${values[1]}="${values[2]}"/>
+        `;
+
+        const values = ['zzz', 'aaa', true];
+
+        render(tpl(values), $container);
+        expect(Component).toHaveBeenCalledWith({
+          foo: 'xxx',
+          [values[0]]: 'yyy',
+          [values[1]]: values[2],
+          children: expect.any(Function)
+        });
+
+
+        //maybe incorrect behaviour below. should not be called
+        Component.mockReset();
+
+        render(tpl(values), $container);
+        expect(Component).toHaveBeenCalledWith({
+          foo: 'xxx',
+          [values[0]]: 'yyy',
+          [values[1]]: values[2],
+          children: expect.any(Function)
+        });
+
+
+        Component.mockReset();
+
+        render(tpl(values), $container);
+        expect(Component).toHaveBeenCalledWith({
+          foo: 'xxx',
+          [values[0]]: 'yyy',
+          [values[1]]: values[2],
+          children: expect.any(Function)
+        });
+
+
+        Component.mockReset();
+        const values2 = ['bbb', 'ccc', { a: [] }];
+
+        render(tpl(values2), $container);
+        expect(Component).toHaveBeenCalledWith({
+          foo: 'xxx',
+          [values2[0]]: 'yyy',
+          [values2[1]]: values2[2],
+          children: expect.any(Function)
+        });
+
+      });
+    });
+
+    //it('renders function correctly', () => {
+
+      //const $container = document.createElement('div');
+
+      //const Component = jest.fn();
+      ////const fn2 = jest.fn();
+      ////const fn3 = jest.fn();
+      ////const fn4 = jest.fn();
+
+      //const tpl = ({ values }) => html`
+        //<${Component} foo="xxx" ${values[0]}="yyy" ${values[1]}="${values[2]}" ${values[3]} ${values}/>
+      //`;
+
+      //expect(1).toBe(1);
+    //});
+  });
+
 });

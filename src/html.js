@@ -223,9 +223,11 @@ function processNode($container){
     const childNodes = nodeCopy.childNodes;
     const attributes = nodeCopy.attributes;
     return (range) => {
+      let props = {};
       return (values, prevValues) => {
         const newValue = matchChunk ? values[matchChunk[2]] : replaceTokens(chunkName, values);
         const oldValue = matchChunk ? prevValues[matchChunk[2]] : replaceTokens(chunkName, prevValues);
+
         const fn = (range, update) => {
           if(update && newValue === oldValue){
             update(values);
@@ -243,7 +245,9 @@ function processNode($container){
               removeAttribute: (name, value) => {
                 //noop
               },
-              props: {},
+              props(val){
+                props = val;
+              },
               attributes: []
             }
             const attrUpdates = copyAttributes(fakeEl, nodeCopy);
@@ -251,7 +255,7 @@ function processNode($container){
             const newUpdate = (newValues, prevValues = values) => {
               attrUpdates.forEach(update => update(newValues, prevValues));
               render(newValue({
-                ...fakeEl.props,
+                ...props,
                 children: (range, update) => {
                   if(update){
                     update(newValues);
@@ -428,18 +432,21 @@ function copyAttributes(target, source){
   }
 
   if('props' in target){
+    const setProps = isFunction(target.props)
+      ? target.props
+      : (props) => target.props = props;
     if(updates.length){
       return [(values, prevValues) => {
-        const [dynamicProps, updated] = updates.reduce(([props, accUpdated], u) => {
+        const [newProps, updated] = updates.reduce(([props, accUpdated], u) => {
           const [{ key, value }, updated] = u(values, prevValues);
           return [Object.assign({}, props, key ? { [key]: value } : {}), accUpdated || updated];
         }, [props, false]);
         if(updated){
-          target.props = dynamicProps;
+          setProps(newProps);
         }
       }];
     }
-    target.props = props;
+    setProps(props);
   }
   return updates;
 
