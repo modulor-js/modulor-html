@@ -142,6 +142,7 @@ function processNode($container){
 
     if(nameIsDynamic || valueIsDynamic){
       nodeCopy.attributes.push((target) => {
+        const prop = {};
         return (values, prevValues) => {
           const preparedName = matchName ? values[matchName[2]] : replaceTokens(name, values);
           const preparedPrevName = matchName ? prevValues[matchName[2]] : replaceTokens(name, prevValues);
@@ -150,20 +151,21 @@ function processNode($container){
           const preparedPrevValue = matchValue ? prevValues[matchValue[2]] : replaceTokens(value, prevValues);
 
           if(preparedName === preparedPrevName && preparedValue === preparedPrevValue){
-            return;
+            return [prop, false];
           }
 
           if(preparedName !== preparedPrevName){
             target.removeAttribute(preparedPrevName);
+            delete prop[preparedPrevName];
           }
 
           if(!preparedName){
-            return;
+            return [prop, true];
           }
 
+          prop[preparedName] = preparedValue;
           applyAttribute(target, { name: preparedName, value: preparedValue }, isBoolean($container[preparedName]));
-          return { [preparedName]: preparedValue };
-
+          return [prop, true];
         };
 
       });
@@ -429,9 +431,12 @@ function copyAttributes(target, source){
   if('props' in target){
     if(updates.length){
       return [(values, prevValues) => {
-        const dynamicProps = updates.reduce((acc, u) => Object.assign(acc, u(values, prevValues)), {});
-        if(Object.keys(dynamicProps).length){
-          target.props = Object.assign(props, dynamicProps);
+        const [dynamicProps, updated] = updates.reduce((acc, u) => {
+          const [prop, updated] = u(values, prevValues);
+          return [Object.assign({}, acc[0], prop), acc[1] || updated];
+        }, [props, false]);
+        if(updated){
+          target.props = dynamicProps;
         }
       }];
     }

@@ -327,7 +327,7 @@ describe('component props', () => {
     });
 
     const tplF = (scope) => html`
-      <my-test-component-f attr="123" value="${scope.value}" foo="${scope.foo}"></my-test-component-f>
+      <my-test-component-f attr="123" value="${scope.value}" foo="${scope.foo}" ${scope.value2}="val"></my-test-component-f>
     `;
 
     const container = document.createElement('div');
@@ -348,6 +348,7 @@ describe('component props', () => {
 
     render(tplF({
       value: 'baz',
+      value2: 'dynamicProp',
       foo: 'bar'
     }), container);
 
@@ -355,6 +356,7 @@ describe('component props', () => {
     expect(propsSetterSpy).toHaveBeenCalledWith({
       attr: '123',
       value: 'baz',
+      dynamicProp: 'val',
       foo: 'bar'
     });
 
@@ -365,7 +367,11 @@ describe('component props', () => {
       foo: 'bar'
     }), container);
 
-    expect(propsSetterSpy).not.toHaveBeenCalled();
+    expect(propsSetterSpy).toHaveBeenCalledWith({
+      attr: '123',
+      value: 'baz',
+      foo: 'bar'
+    });
 
     propsSetterSpy.mockReset();
 
