@@ -621,7 +621,7 @@ describe('comment section', () => {
 });
 
 describe('dynamic tags', () => {
-  describe.only('string value', () => {
+  describe('string value', () => {
 
     it('renders tag with dynamic name', () => {
 
@@ -656,6 +656,34 @@ describe('dynamic tags', () => {
         <x-${values3[1]}></x-${values3[1]}>
         <${values3[2]}-y-${values3[0]}></${values3[2]}-y-${values3[0]}>
         <${values3[1]}></${values3[1]}>
+      `);
+    });
+
+    it('handles attributes in dynamic tags', () => {
+
+      const $container = document.createElement('div');
+
+      const tpl = ({ tagName, values }) => html`
+        <span></span>
+        <x-${tagName} foo="${values[0]}" bar-${values[1]}="${values[2]}" class="quux ${values[3]}"/>
+      `;
+
+      const values1 = { tagName: 'div', values: ['foo', 1, 'bar', 'baz'] };
+      render(tpl(values1), $container);
+      expect($container.innerHTML).toBe(`<span></span>
+        <x-${values1.tagName} class="quux ${values1.values[3]}" foo="${values1.values[0]}" bar-${values1.values[1]}="${values1.values[2]}"></x-${values1.tagName}>
+      `);
+
+      const values2 = { tagName: 'span', values: ['foo', 1, 'bar', 'baz'] };
+      render(tpl(values2), $container);
+      expect($container.innerHTML).toBe(`<span></span>
+        <x-${values2.tagName} class="quux ${values2.values[3]}" foo="${values2.values[0]}" bar-${values2.values[1]}="${values2.values[2]}"></x-${values2.tagName}>
+      `);
+
+      const values3 = { tagName: 'span', values: ['quux', 'test', 3, 'baz'] };
+      render(tpl(values3), $container);
+      expect($container.innerHTML).toBe(`<span></span>
+        <x-${values3.tagName} class="quux ${values3.values[3]}" foo="${values3.values[0]}" bar-${values3.values[1]}="${values3.values[2]}"></x-${values3.tagName}>
       `);
     });
 
@@ -708,19 +736,70 @@ describe('dynamic tags', () => {
         </x-${values4.tagName}>
       `);
     });
+
+    it('renders child content only on demand', () => {
+
+      const $container = document.createElement('div');
+
+      const fn1 = jest.fn();
+      const fn2 = jest.fn();
+      const fn3 = jest.fn();
+      const fn4 = jest.fn();
+
+      const tpl = ({ tagName, tagName2 }) => html`
+        <x-${tagName} ${fn3}>
+          ${fn1}
+        </x-${tagName}>
+        <${tagName2} ${fn4}>
+          ${fn2}
+        </${tagName2}>
+      `;
+
+      const values1 = { tagName: 'foo', tagName2: 'div' };
+      render(tpl(values1), $container);
+      expect($container.innerHTML).toBe(`<x-${values1.tagName}>
+          
+        </x-${values1.tagName}>
+        <${values1.tagName2}>
+          
+        </${values1.tagName2}>
+      `);
+      expect(fn1).toHaveBeenCalledTimes(1);
+      expect(fn2).toHaveBeenCalledTimes(1);
+      expect(fn3).toHaveBeenCalledTimes(1);
+      expect(fn4).toHaveBeenCalledTimes(1);
+
+
+      const values2 = { tagName: 'foo', tagName2: 'span' };
+      render(tpl(values2), $container);
+      expect($container.innerHTML).toBe(`<x-${values2.tagName}>
+          
+        </x-${values2.tagName}>
+        <${values2.tagName2}>
+          
+        </${values2.tagName2}>
+      `);
+      expect(fn1).toHaveBeenCalledTimes(1);
+      expect(fn2).toHaveBeenCalledTimes(2);
+      expect(fn3).toHaveBeenCalledTimes(1);
+      expect(fn4).toHaveBeenCalledTimes(2);
+
+
+      const values3 = { tagName: 'foo', tagName2: 'div' };
+      render(tpl(values3), $container);
+      expect($container.innerHTML).toBe(`<x-${values3.tagName}>
+          
+        </x-${values3.tagName}>
+        <${values3.tagName2}>
+          
+        </${values3.tagName2}>
+      `);
+      expect(fn1).toHaveBeenCalledTimes(1);
+      expect(fn2).toHaveBeenCalledTimes(3);
+      expect(fn3).toHaveBeenCalledTimes(1);
+      expect(fn4).toHaveBeenCalledTimes(3);
+
+    });
   });
-
-
-  //it('dynamic value', () => {
-    //const $container = document.createElement('div');
-
-    //const tpl = (scope) => html`1 <!-- foo ${scope} -->`;
-
-    //render(tpl('bar'), $container);
-    //expect($container.innerHTML).toBe('1 <!-- foo bar -->');
-
-    //render(tpl('baz'), $container);
-    //expect($container.innerHTML).toBe('1 <!-- foo baz -->');
-  //});
 
 });
