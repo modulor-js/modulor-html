@@ -237,7 +237,15 @@ function processNode($container){
           if(chunkType === 'promise'){
           }
           if(chunkType === 'function'){
+
             //maybe extract fakeEl
+            const fakeEl = {
+              props(val, updated){
+                render(newValue(val), range);
+              },
+              setAttribute: () => {},
+              removeAttribute: () => {}, attributes: []
+            }
 
             const children = (range, update) => {
               if(update){
@@ -248,26 +256,13 @@ function processNode($container){
               uu(values);
               ff();
               return uu;
-            }
+            };
 
-            const fakeEl = {
-              setAttribute: (name, value) => {
-                //noop
-              },
-              removeAttribute: (name, value) => {
-                //noop
-              },
-              props(val, updated){
-                props = val;
-                render(newValue({
-                  ...props,
-                  children
-                }), range);
-              },
-              attributes: []
-            }
-
-            const attrUpdates = copyAttributes(fakeEl, nodeCopy);
+            const attrUpdates = copyAttributes(fakeEl, Object.assign({}, nodeCopy, {
+              attributes: attributes.concat((target) => (values, prevValues) => {
+                return [{ key: 'children', value: children }, true];
+              })
+            }));
 
             const newUpdate = (newValues, prevValues = values) => {
               attrUpdates.forEach(update => update(newValues, prevValues));
