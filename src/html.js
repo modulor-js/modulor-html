@@ -247,18 +247,24 @@ function processNode($container){
             }
             const attrUpdates = copyAttributes(fakeEl, nodeCopy);
 
-            attrUpdates.forEach(update => update(values, prevValues));
-            render(newValue({
-              props: fakeEl.props,
-              children: childNodes //better pass function or fragment
-            }), range);
-            return (newValues) => {
-              attrUpdates.forEach(update => update(newValues, values));
+            const newUpdate = (newValues, prevValues = values) => {
+              attrUpdates.forEach(update => update(newValues, prevValues));
               render(newValue({
-                props: fakeEl.props,
-                children: childNodes //better pass function or fragment
+                ...fakeEl.props,
+                children: (range, update) => {
+                  if(update){
+                    update(newValues);
+                    return update;
+                  }
+                  const [uu, ff] = morph({ childNodes }, range, { useDocFragment: true });
+                  uu(newValues);
+                  ff();
+                  return uu;
+                }
               }), range);
-            };
+            }
+            newUpdate(values, prevValues);
+            return newUpdate;
           }
           if(chunkType === 'text'){
             const container = {
@@ -267,6 +273,7 @@ function processNode($container){
               })]
             }
             const [newUpdate, initialRender] = morph(container, range, { useDocFragment: true });
+            newUpdate(values);
             initialRender();
             return newUpdate;
           }

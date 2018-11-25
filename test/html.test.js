@@ -619,3 +619,108 @@ describe('comment section', () => {
   });
 
 });
+
+describe('dynamic tags', () => {
+  describe.only('string value', () => {
+
+    it('renders tag with dynamic name', () => {
+
+      const $container = document.createElement('div');
+
+      const tpl = (scope) => html`
+        <x-${scope[0]}/>
+        <x-${scope[1]}></x-${scope[1]}>
+        <${scope[2]}-y-${scope[0]}/>
+        <${scope[1]}/>
+      `;
+
+      const values1 = ['foo', 'bar', 'baz'];
+      render(tpl(values1), $container);
+      expect($container.innerHTML).toBe(`<x-${values1[0]}></x-${values1[0]}>
+        <x-${values1[1]}></x-${values1[1]}>
+        <${values1[2]}-y-${values1[0]}></${values1[2]}-y-${values1[0]}>
+        <${values1[1]}></${values1[1]}>
+      `);
+
+      const values2 = ['quux', 'bla', 'test'];
+      render(tpl(values2), $container);
+      expect($container.innerHTML).toBe(`<x-${values2[0]}></x-${values2[0]}>
+        <x-${values2[1]}></x-${values2[1]}>
+        <${values2[2]}-y-${values2[0]}></${values2[2]}-y-${values2[0]}>
+        <${values2[1]}></${values2[1]}>
+      `);
+
+      const values3 = [1, 'bar', 'baz'];
+      render(tpl(values3), $container);
+      expect($container.innerHTML).toBe(`<x-${values3[0]}></x-${values3[0]}>
+        <x-${values3[1]}></x-${values3[1]}>
+        <${values3[2]}-y-${values3[0]}></${values3[2]}-y-${values3[0]}>
+        <${values3[1]}></${values3[1]}>
+      `);
+    });
+
+    it('renders child content correctly', () => {
+
+      const $container = document.createElement('div');
+
+      const tpl = ({ tagName, value, list }) => html`
+        <x-${tagName}>
+          ${list ? list.map((val) => html`
+            <span>${val}</span>
+          `) : void 0}
+          <div>${value}</div>
+        </x-${tagName}>
+      `;
+
+      const values1 = { tagName: 'foo', value: 'bar' };
+      render(tpl(values1), $container);
+      expect($container.innerHTML).toBe(`<x-${values1.tagName}>
+          
+          <div>${values1.value}</div>
+        </x-${values1.tagName}>
+      `);
+
+      const values2 = { tagName: 'foo', value: 'baz', list: ['xxx', 'yyy'] };
+      render(tpl(values2), $container);
+      expect($container.innerHTML).toBe(`<x-${values2.tagName}>
+          <span>${values2.list[0]}</span>
+          <span>${values2.list[1]}</span>
+          
+          <div>${values2.value}</div>
+        </x-${values2.tagName}>
+      `);
+
+      const values3 = { tagName: 'bar', value: 'baz', list: ['xxx', 'yyy'] };
+      render(tpl(values3), $container);
+      expect($container.innerHTML).toBe(`<x-${values3.tagName}>
+          <span>${values3.list[0]}</span>
+          <span>${values3.list[1]}</span>
+          
+          <div>${values3.value}</div>
+        </x-${values3.tagName}>
+      `);
+
+      const values4 = { tagName: 'bar', value: 'baz' };
+      render(tpl(values4), $container);
+      expect($container.innerHTML).toBe(`<x-${values4.tagName}>
+          
+          <div>${values4.value}</div>
+        </x-${values4.tagName}>
+      `);
+    });
+  });
+
+
+  //it('dynamic value', () => {
+    //const $container = document.createElement('div');
+
+    //const tpl = (scope) => html`1 <!-- foo ${scope} -->`;
+
+    //render(tpl('bar'), $container);
+    //expect($container.innerHTML).toBe('1 <!-- foo bar -->');
+
+    //render(tpl('baz'), $container);
+    //expect($container.innerHTML).toBe('1 <!-- foo baz -->');
+  //});
+
+});
