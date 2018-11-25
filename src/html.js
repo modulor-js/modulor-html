@@ -238,6 +238,18 @@ function processNode($container){
           }
           if(chunkType === 'function'){
             //maybe extract fakeEl
+
+            const children = (range, update) => {
+              if(update){
+                update(values);
+                return update;
+              }
+              const [uu, ff] = morph({ childNodes }, range, { useDocFragment: true });
+              uu(values);
+              ff();
+              return uu;
+            }
+
             const fakeEl = {
               setAttribute: (name, value) => {
                 //noop
@@ -245,28 +257,20 @@ function processNode($container){
               removeAttribute: (name, value) => {
                 //noop
               },
-              props(val){
+              props(val, updated){
                 props = val;
+                render(newValue({
+                  ...props,
+                  children
+                }), range);
               },
               attributes: []
             }
+
             const attrUpdates = copyAttributes(fakeEl, nodeCopy);
 
             const newUpdate = (newValues, prevValues = values) => {
               attrUpdates.forEach(update => update(newValues, prevValues));
-              render(newValue({
-                ...props,
-                children: (range, update) => {
-                  if(update){
-                    update(newValues);
-                    return update;
-                  }
-                  const [uu, ff] = morph({ childNodes }, range, { useDocFragment: true });
-                  uu(newValues);
-                  ff();
-                  return uu;
-                }
-              }), range);
             }
             newUpdate(values, prevValues);
             return newUpdate;
@@ -434,19 +438,17 @@ function copyAttributes(target, source){
   if('props' in target){
     const setProps = isFunction(target.props)
       ? target.props
-      : (props) => target.props = props;
+      : (props, updated) => updated && (target.props = props);
     if(updates.length){
       return [(values, prevValues) => {
         const [newProps, updated] = updates.reduce(([props, accUpdated], u) => {
           const [{ key, value }, updated] = u(values, prevValues);
           return [Object.assign({}, props, key ? { [key]: value } : {}), accUpdated || updated];
         }, [props, false]);
-        if(updated){
-          setProps(newProps);
-        }
+        setProps(newProps, updated);
       }];
     }
-    setProps(props);
+    setProps(props, true);
   }
   return updates;
 
