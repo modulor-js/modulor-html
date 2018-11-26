@@ -8,12 +8,12 @@ describe('experiment', () => {
     const container = document.createElement('div');
     //const container2 = document.createElement('div');
     const comp = (props) => {
-      console.log(props);
+      //console.log(props);
       //return children;
       return html`
-        <div>
+        <div test="myel">
           ${props.foo}
-          ${props.children}
+          ${props.foo ? props.children : void 0}
         </div>
       `;
     };
@@ -32,8 +32,9 @@ describe('experiment', () => {
 
     render(tpl({ a: [1,6,3] }), container);
     render(tpl({ a: [2,6,3] }), container);
-    render(tpl({ a: [3,7,3] }), container);
-    //render(tpl({ a: [1,2,3] }), container);
+    render(tpl({ a: [0,7,3] }), container);
+    console.log(container.innerHTML);
+    render(tpl({ a: [1,8,3] }), container);
     console.log(container.innerHTML);
     //render(tpl({ a: [3,4,5] }), container);
     //console.log(container.innerHTML);

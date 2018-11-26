@@ -234,8 +234,6 @@ function processNode($container){
             return update;
           }
           const chunkType = getChunkType(newValue);
-          if(chunkType === 'promise'){
-          }
           if(chunkType === 'function'){
 
             //maybe extract fakeEl
@@ -244,22 +242,23 @@ function processNode($container){
                 render(newValue(val), range);
               },
               setAttribute: () => {},
-              removeAttribute: () => {}, attributes: []
+              removeAttribute: () => {},
+              attributes: []
             }
 
-            const children = (range, update) => {
-              if(update){
-                update(values);
-                return update;
-              }
-              const [uu, ff] = morph({ childNodes }, range, { useDocFragment: true });
-              uu(values);
-              ff();
-              return uu;
-            };
 
             const attrUpdates = copyAttributes(fakeEl, Object.assign({}, nodeCopy, {
               attributes: attributes.concat((target) => (values, prevValues) => {
+                const children = (range, update) => {
+                  if(update){
+                    update(values);
+                    return update;
+                  }
+                  const [uu, ff] = morph({ childNodes }, range, { useDocFragment: true });
+                  uu(values);
+                  ff();
+                  return uu;
+                };
                 return [{ key: 'children', value: children }, true];
               })
             }));
