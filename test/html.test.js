@@ -859,6 +859,28 @@ describe('dynamic tags', () => {
           children: expect.any(Function)
         });
 
+
+        Component.mockReset();
+        const values3 = ['bbb', 'ccc'];
+
+        render(tpl(values3), $container);
+        expect(Component).toHaveBeenCalledWith({
+          foo: 'xxx',
+          [values3[0]]: 'yyy',
+          children: expect.any(Function)
+        });
+
+
+        Component.mockReset();
+        const values4 = ['bbb', void 0, [1]];
+
+        render(tpl(values4), $container);
+        expect(Component).toHaveBeenCalledWith({
+          foo: 'xxx',
+          [values4[0]]: 'yyy',
+          children: expect.any(Function)
+        });
+
       });
     });
 
