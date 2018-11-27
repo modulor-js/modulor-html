@@ -195,7 +195,6 @@ function processNode($container){
           }
 
           prop[preparedName] = preparedValue;
-          //precache isBoolean upper
           applyAttribute(target, { name: preparedName, value: preparedValue }, isBoolean($container[preparedName]));
           return [prop, true];
         };

@@ -1185,4 +1185,60 @@ describe('dynamic tags', () => {
 
   });
 
+  it('handles mixed content', () => {
+
+    const $container = document.createElement('div');
+
+    const Component = ({ children }) => html`
+      <div id="component">
+        ${children}
+      </div>
+    `;
+
+    const tpl = ({ tag, childContent }) => html`
+      <${tag}>
+        <span>${childContent}</span>
+      </${tag}>
+    `;
+
+
+    const values1 = { tag: 'x-foo', childContent: 'test' };
+
+    render(tpl(values1), $container);
+    expect($container.innerHTML).toBe(`<${values1.tag}>
+        <span>${values1.childContent}</span>
+      </${values1.tag}>
+    `);
+
+
+    const values2 = { tag: Component, childContent: 'foo' };
+
+    render(tpl(values2), $container);
+    expect($container.innerHTML).toBe(`<div id="component">
+        
+        <span>${values2.childContent}</span>
+      
+      </div>
+    
+    `);
+
+
+    const values3 = { tag: 'x-foo', childContent: 'foo' };
+
+    render(tpl(values3), $container);
+    expect($container.innerHTML).toBe(`<${values3.tag}>
+        <span>${values3.childContent}</span>
+      </${values3.tag}>
+    `);
+
+
+    const values4 = { tag: 'x-bar', childContent: 'foo' };
+
+    render(tpl(values4), $container);
+    expect($container.innerHTML).toBe(`<${values4.tag}>
+        <span>${values4.childContent}</span>
+      </${values4.tag}>
+    `);
+  });
+
 });
