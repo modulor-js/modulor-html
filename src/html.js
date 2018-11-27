@@ -460,7 +460,8 @@ function copyAttributes(target, source){
       return [(values, prevValues) => {
         const [newProps, updated] = updates.reduce(([props, accUpdated], u) => {
           const [{ key, value }, updated] = u(values, prevValues);
-          return [Object.assign({}, props, getChunkType(key) === 'text' ? { [key]: value } : {}), accUpdated || updated];
+          const prop = (typeof key === 'string' || typeof key === 'number') ? { [key]: value } : {};
+          return [Object.assign({}, props, prop), accUpdated || updated];
         }, [props, false]);
         setProps(newProps, updated);
       }];

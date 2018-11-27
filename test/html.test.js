@@ -883,44 +883,42 @@ describe('dynamic tags', () => {
 
       });
 
-      //it.only('passes only attributes where name is string or number', () => {
+      it('passes only attributes where name is string or number', () => {
 
-        //const tpl = (values) => html`
-          //<${Component} ${values[0]}="yyy" ${values[1]}="${values[2]}"/>
-        //`;
+        const tpl = (values) => html`
+          <${Component} ${values[0]}="yyy" ${values[1]}="${values[2]}"/>
+        `;
 
-        //const values = ['zzz', 'aaa', true];
+        const values = ['zzz', 'aaa', true];
 
-        //render(tpl(values), $container);
-        //expect(Component).toHaveBeenCalledWith({
-          //[values[0]]: 'yyy',
-          //[values[1]]: values[2],
-          //children: expect.any(Function)
-        //});
-
-
-        //Component.mockReset();
-
-        //const values2 = [() => {}, true, true];
-
-        //render(tpl(values2), $container);
-        //expect(Component).toHaveBeenCalledWith({
-          //[values2[1]]: values2[2],
-          //children: expect.any(Function)
-        //});
+        render(tpl(values), $container);
+        expect(Component).toHaveBeenCalledWith({
+          [values[0]]: 'yyy',
+          [values[1]]: values[2],
+          children: expect.any(Function)
+        });
 
 
-        //Component.mockReset();
+        Component.mockReset();
 
-        //const values3 = [null, {}, true];
+        const values2 = [() => {}, true, true];
 
-        //render(tpl(values3), $container);
-        //expect(Component).toHaveBeenCalledWith({
-          //[values3[0]]: 'yyy',
-          //children: expect.any(Function)
-        //});
+        render(tpl(values2), $container);
+        expect(Component).toHaveBeenCalledWith({
+          children: expect.any(Function)
+        });
 
-      //});
+
+        Component.mockReset();
+
+        const values3 = [null, {}, true];
+
+        render(tpl(values3), $container);
+        expect(Component).toHaveBeenCalledWith({
+          children: expect.any(Function)
+        });
+
+      });
 
       it('handles simple classes', () => {
 
