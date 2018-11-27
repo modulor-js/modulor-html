@@ -134,6 +134,8 @@ function processNode($container){
     childNodes: [],
   };
 
+  const { attributes, childNodes } = nodeCopy;
+
   const childAttributes = $container.attributes || [];
   for(let j = 0; j < childAttributes.length; j++){
     const { name, value }  = childAttributes[j];
@@ -152,8 +154,8 @@ function processNode($container){
         acc[className.match(findChunksRegex) ? 0 : 1].push(className);
         return acc;
       }, [[], []]);
-      nodeCopy.attributes.push({ name, value: initial.join(' ') });
-      dynamic.length && nodeCopy.attributes.push((target) => {
+      attributes.push({ name, value: initial.join(' ') });
+      dynamic.length && attributes.push((target) => {
         return (values, prevValues) => {
           const updated = dynamic.reduce((acc, className) => {
             const matchClass = className.match(matchChunkRegex);
@@ -173,7 +175,7 @@ function processNode($container){
     }
 
     if(nameIsDynamic || valueIsDynamic){
-      nodeCopy.attributes.push((target) => {
+      attributes.push((target) => {
         return (values, prevValues) => {
           const preparedName = matchName ? values[matchName[2]] : replaceTokens(name, values);
           const preparedPrevName = matchName ? prevValues[matchName[2]] : replaceTokens(name, prevValues);
@@ -201,24 +203,24 @@ function processNode($container){
 
       });
     } else {
-      nodeCopy.attributes.push({ name, value, isBoolean: isBoolean($container[name]) });
+      attributes.push({ name, value, isBoolean: isBoolean($container[name]) });
     }
   }
 
-  const childNodes = $container.childNodes || [];
-  for(let i = 0; i < childNodes.length; i++){
-    const $childNode = childNodes[i];
+  const containerChildNodes = $container.childNodes || [];
+  for(let i = 0; i < containerChildNodes.length; i++){
+    const $childNode = containerChildNodes[i];
     if($childNode.nodeType === TEXT_NODE){
       const chunks = $childNode.textContent.split(findChunksRegex);
       chunks.filter(chunk => !!chunk).forEach((chunk) => {
         const match = chunk.match(matchChunkRegex);
         if(match){
           const matchIndex = match[2];
-          nodeCopy.childNodes.push((range) => {
+          childNodes.push((range) => {
             return (values) => render(values[matchIndex], range);
           });
         } else {
-          nodeCopy.childNodes.push({
+          childNodes.push({
             nodeType: TEXT_NODE,
             textContent: chunk,
           });
@@ -228,7 +230,7 @@ function processNode($container){
     }
     if($childNode.nodeType === COMMENT_NODE){
       if($childNode.textContent.match(findChunksRegex)){
-        nodeCopy.childNodes.push((range) => {
+        childNodes.push((range) => {
           const $element = document.createComment('');
           const content = $childNode.textContent;
           range.appendChild($element);
@@ -237,14 +239,14 @@ function processNode($container){
           };
         });
       } else {
-        nodeCopy.childNodes.push({
+        childNodes.push({
           nodeType: COMMENT_NODE,
           textContent: $childNode.textContent,
         });
       }
       continue;
     }
-    nodeCopy.childNodes.push(processNode($childNode));
+    childNodes.push(processNode($childNode));
   }
 
   const tagName = $container.tagName;
@@ -267,13 +269,13 @@ function processNode($container){
           const virtualElement = createVirtualElement((value) => render(newValue(value), range));
 
           const attrUpdates = copyAttributes(virtualElement, Object.assign({}, nodeCopy, {
-            attributes: nodeCopy.attributes.concat((target) => (values, prevValues) => {
+            attributes: attributes.concat((target) => (values, prevValues) => {
               const children = (range, update) => {
                 if(update){
                   update(values);
                   return update;
                 }
-                const [newUpdate, initialRender] = morph({ childNodes: nodeCopy.childNodes }, range, { useDocFragment: true });
+                const [newUpdate, initialRender] = morph({ childNodes }, range, { useDocFragment: true });
                 newUpdate(values);
                 initialRender();
                 return newUpdate;
