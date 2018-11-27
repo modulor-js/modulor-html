@@ -96,6 +96,35 @@ function applyClassFn(value, fn){
   return classesArray.forEach((className) => fn(className));
 }
 
+function createVirtualElement(setProps){
+  let classes = {};
+  const element = {
+    props: setProps,
+    setAttribute: (name, value) => {
+      if(name === 'class'){
+        classes = value.split(' ').reduce((acc, className) => Object.assign(acc, {
+          [className]: true
+        }), {});
+      }
+    },
+    removeAttribute: () => {},
+    classList: {
+      add: (value) => {
+        classes[value] = true;
+        element.className = Object.keys(classes).join(' ').trim();
+      },
+      remove: (value) => {
+        delete classes[value];
+        element.className = Object.keys(classes).join(' ').trim();
+      }
+    },
+    className: '',
+    attributes: []
+  }
+  return element;
+};
+
+
 function processNode($container){
   const nodeCopy = {
     nodeType: $container.nodeType,
@@ -227,84 +256,52 @@ function processNode($container){
     const childNodes = nodeCopy.childNodes;
     const attributes = nodeCopy.attributes;
     return (range) => {
+      let update;
       return (values, prevValues) => {
         const newValue = matchChunk ? values[matchChunk[2]] : replaceTokens(chunkName, values);
         const oldValue = matchChunk ? prevValues[matchChunk[2]] : replaceTokens(chunkName, prevValues);
 
-        const fn = (range, update) => {
-          if(update && newValue === oldValue){
-            update(values);
-            return update;
-          }
-          const chunkType = getChunkType(newValue);
-          if(chunkType === 'function'){
-
-            //maybe extract fakeEl
-            const fakeEl = ((onPropsChange) => {
-              let classes = {};
-              return {
-                props(val, updated){
-                  render(newValue(val), range);
-                },
-                setAttribute: (name, value) => {
-                  if(name === 'class'){
-                    classes = value.split(' ').reduce((acc, className) => Object.assign(acc, {
-                      [className]: true
-                    }), {});
-                  }
-                },
-                removeAttribute: () => {},
-                classList: {
-                  add: (value) => {
-                    classes[value] = true;
-                    fakeEl.className = Object.keys(classes).join(' ').trim();
-                  },
-                  remove: (value) => {
-                    delete classes[value];
-                    fakeEl.className = Object.keys(classes).join(' ').trim();
-                  }
-                },
-                className: '',
-                attributes: []
-              }
-            })();
-
-
-            const attrUpdates = copyAttributes(fakeEl, Object.assign({}, nodeCopy, {
-              attributes: attributes.concat((target) => (values, prevValues) => {
-                const children = (range, update) => {
-                  if(update){
-                    update(values);
-                    return update;
-                  }
-                  const [uu, ff] = morph({ childNodes }, range, { useDocFragment: true });
-                  uu(values);
-                  ff();
-                  return uu;
-                };
-                return [{ key: 'children', value: children }, true];
-              })
-            }));
-
-            const newUpdate = (newValues, prevValues = values) => {
-              attrUpdates.forEach(update => update(newValues, prevValues));
-            }
-            newUpdate(values, prevValues);
-            return newUpdate;
-          }
-          if(chunkType === 'text'){
-            const container = {
-              childNodes: [Object.assign({}, nodeCopy, {
-                tagName: newValue
-              })]
-            }
-            const [newUpdate, initialRender] = morph(container, range, { useDocFragment: true });
-            newUpdate(values);
-            initialRender();
-            return newUpdate;
-          }
+        if(update && newValue === oldValue){
+          return update(values);
         }
-        render(fn, range)
+        const chunkType = getChunkType(newValue);
+        if(chunkType === 'function'){
+
+          const virtualElement = createVirtualElement((value) => render(newValue(value), range));
+
+          const attrUpdates = copyAttributes(virtualElement, Object.assign({}, nodeCopy, {
+            attributes: attributes.concat((target) => (values, prevValues) => {
+              const children = (range, update) => {
+                if(update){
+                  update(values);
+                  return update;
+                }
+                const [uu, ff] = morph({ childNodes }, range, { useDocFragment: true });
+                uu(values);
+                ff();
+                return uu;
+              };
+              return [{ key: 'children', value: children }, true];
+            })
+          }));
+
+          const newUpdate = (newValues, prevValues = values) => {
+            attrUpdates.forEach(update => update(newValues, prevValues));
+          }
+          newUpdate(values, prevValues);
+          update = newUpdate;
+        }
+        if(chunkType === 'text'){
+          const container = {
+            childNodes: [Object.assign({}, nodeCopy, {
+              tagName: newValue
+            })]
+          }
+          const [newUpdate, initialRender] = morph(container, range, { useDocFragment: true });
+          newUpdate(values);
+          initialRender();
+          update = newUpdate;
+        }
       };
     };
   } else if(tagName){

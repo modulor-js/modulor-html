@@ -998,21 +998,191 @@ describe('dynamic tags', () => {
       });
     });
 
-    //it('renders function correctly', () => {
+    describe('child content rendering', () => {
+      it('handles ternary operator', () => {
 
-      //const $container = document.createElement('div');
+        const $container = document.createElement('div');
 
-      //const Component = jest.fn();
-      ////const fn2 = jest.fn();
-      ////const fn3 = jest.fn();
-      ////const fn4 = jest.fn();
+        const Component = ({ children, show }) => html`
+          <span id="bar">${show}</span>
+          <div class="component-wrapper">
+            ${show ? children : void 0}
+          </div>
+        `;
 
-      //const tpl = ({ values }) => html`
-        //<${Component} foo="xxx" ${values[0]}="yyy" ${values[1]}="${values[2]}" ${values[3]} ${values}/>
-      //`;
+        const tpl = ({ show, values }) => html`
+          <${Component} show=${show}>
+            <div id="foo"></div>
+            <span test="${values[0]}">${values[1]}</span>
+          </${Component}>
+        `;
 
-      //expect(1).toBe(1);
-    //});
+
+        const values1 = { show: true, values: ['foo', 'bar'] };
+
+        render(tpl(values1), $container);
+        expect($container.innerHTML).toBe(`<span id="bar">${values1.show}</span>
+          <div class="component-wrapper">
+            
+            <div id="foo"></div>
+            <span test="${values1.values[0]}">${values1.values[1]}</span>
+          
+          </div>
+        
+        `);
+
+
+        const values2 = { show: false, values: ['foo', 'bar'] };
+
+        render(tpl(values2), $container);
+        expect($container.innerHTML).toBe(`<span id="bar">${values2.show}</span>
+          <div class="component-wrapper">
+            
+          </div>
+        
+        `);
+
+
+        const values3 = { show: true, values: ['baz', 'quux'] };
+
+        render(tpl(values3), $container);
+        expect($container.innerHTML).toBe(`<span id="bar">${values3.show}</span>
+          <div class="component-wrapper">
+            
+            <div id="foo"></div>
+            <span test="${values3.values[0]}">${values3.values[1]}</span>
+          
+          </div>
+        
+        `);
+
+        const values4 = { show: true, values: ['baz', 'zzz'] };
+
+        render(tpl(values4), $container);
+        expect($container.innerHTML).toBe(`<span id="bar">${values4.show}</span>
+          <div class="component-wrapper">
+            
+            <div id="foo"></div>
+            <span test="${values4.values[0]}">${values4.values[1]}</span>
+          
+          </div>
+        
+        `);
+      });
+
+      it('handles arrays in child content', () => {
+
+        const $container = document.createElement('div');
+
+        const Component = ({ children }) => html`${children}`;
+
+        const tpl = ({ values }) => html`
+          <${Component}>
+            ${values.map((value) => html`
+              <span>${value}</span>
+            `)}
+          </${Component}>
+        `;
+
+
+        const values1 = { values: ['foo', 'bar'] };
+
+        render(tpl(values1), $container);
+        expect($container.innerHTML).toBe(`
+            <span>${values1.values[0]}</span>
+            <span>${values1.values[1]}</span>
+            
+          
+        `);
+
+
+        const values2 = { values: ['quux', 'zzz'] };
+
+        render(tpl(values2), $container);
+        expect($container.innerHTML).toBe(`
+            <span>${values2.values[0]}</span>
+            <span>${values2.values[1]}</span>
+            
+          
+        `);
+
+        const values3 = { values: ['quux', 'zzz', 'yyy'] };
+
+        render(tpl(values3), $container);
+        expect($container.innerHTML).toBe(`
+            <span>${values3.values[0]}</span>
+            <span>${values3.values[1]}</span>
+            <span>${values3.values[2]}</span>
+            
+          
+        `);
+
+        const values4 = { values: ['quux', 'yyy'] };
+
+        render(tpl(values4), $container);
+        expect($container.innerHTML).toBe(`
+            <span>${values4.values[0]}</span>
+            <span>${values4.values[1]}</span>
+            
+          
+        `);
+      });
+
+      it('handles nested components', () => {
+
+        const $container = document.createElement('div');
+
+        const ComponentA = ({ children, foo }) => html`
+          <div id="component-a" foo=${foo}>
+            ${children}
+          </div>
+        `;
+
+        const ComponentB = ({ value }) => html`
+          <span id="component-b">
+            <${ComponentA} foo=${value + '-bla'}>
+              <p>${value}</p>
+            </${ComponentA}>
+          </span>
+        `;
+
+        const tpl = ({ values }) => html`
+          <${ComponentB} value=${values[0]}/>
+        `;
+
+
+        const values1 = { values: ['foo'] };
+
+        render(tpl(values1), $container);
+        expect($container.innerHTML).toBe(`<span id="component-b">
+            <div id="component-a" foo="${values1.values[0]}-bla">
+            
+              <p>${values1.values[0]}</p>
+            
+          </div>
+        
+          </span>
+        
+        `);
+
+
+        const values2 = { values: ['bar'] };
+
+        render(tpl(values2), $container);
+        expect($container.innerHTML).toBe(`<span id="component-b">
+            <div id="component-a" foo="${values2.values[0]}-bla">
+            
+              <p>${values2.values[0]}</p>
+            
+          </div>
+        
+          </span>
+        
+        `);
+      });
+
+    });
+
   });
 
 });
