@@ -252,8 +252,6 @@ function processNode($container){
     const chunkName = $container.attributes[specialAttributeName].value;
     const matchChunk = chunkName.match(matchChunkRegex);
 
-    const childNodes = nodeCopy.childNodes;
-    const attributes = nodeCopy.attributes;
     return (range) => {
       let update;
       return (values, prevValues) => {
@@ -269,16 +267,16 @@ function processNode($container){
           const virtualElement = createVirtualElement((value) => render(newValue(value), range));
 
           const attrUpdates = copyAttributes(virtualElement, Object.assign({}, nodeCopy, {
-            attributes: attributes.concat((target) => (values, prevValues) => {
+            attributes: nodeCopy.attributes.concat((target) => (values, prevValues) => {
               const children = (range, update) => {
                 if(update){
                   update(values);
                   return update;
                 }
-                const [uu, ff] = morph({ childNodes }, range, { useDocFragment: true });
-                uu(values);
-                ff();
-                return uu;
+                const [newUpdate, initialRender] = morph({ childNodes: nodeCopy.childNodes }, range, { useDocFragment: true });
+                newUpdate(values);
+                initialRender();
+                return newUpdate;
               };
               return [{ key: 'children', value: children }, true];
             })
