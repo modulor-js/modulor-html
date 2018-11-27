@@ -825,7 +825,7 @@ describe('dynamic tags', () => {
         });
 
 
-        //maybe incorrect behaviour below. should not be called
+        //maybe incorrect behaviour below. maybe should not be called
         Component.mockReset();
 
         render(tpl(values), $container);
@@ -878,6 +878,122 @@ describe('dynamic tags', () => {
         expect(Component).toHaveBeenCalledWith({
           foo: 'xxx',
           [values4[0]]: 'yyy',
+          children: expect.any(Function)
+        });
+
+      });
+
+      //it.only('passes only attributes where name is string or number', () => {
+
+        //const tpl = (values) => html`
+          //<${Component} ${values[0]}="yyy" ${values[1]}="${values[2]}"/>
+        //`;
+
+        //const values = ['zzz', 'aaa', true];
+
+        //render(tpl(values), $container);
+        //expect(Component).toHaveBeenCalledWith({
+          //[values[0]]: 'yyy',
+          //[values[1]]: values[2],
+          //children: expect.any(Function)
+        //});
+
+
+        //Component.mockReset();
+
+        //const values2 = [() => {}, true, true];
+
+        //render(tpl(values2), $container);
+        //expect(Component).toHaveBeenCalledWith({
+          //[values2[1]]: values2[2],
+          //children: expect.any(Function)
+        //});
+
+
+        //Component.mockReset();
+
+        //const values3 = [null, {}, true];
+
+        //render(tpl(values3), $container);
+        //expect(Component).toHaveBeenCalledWith({
+          //[values3[0]]: 'yyy',
+          //children: expect.any(Function)
+        //});
+
+      //});
+
+      it('handles simple classes', () => {
+
+        const tpl = (values) => html`
+          <${Component} class="foo ${values[0]} ${values[1]}"/>
+        `;
+
+        const values = ['zzz'];
+
+        render(tpl(values), $container);
+        expect(Component).toHaveBeenCalledWith({
+          className: `foo ${values[0]}`,
+          children: expect.any(Function)
+        });
+
+
+        Component.mockReset();
+
+        const values2 = [];
+
+        render(tpl(values2), $container);
+        expect(Component).toHaveBeenCalledWith({
+          className: `foo`,
+          children: expect.any(Function)
+        });
+
+        Component.mockReset();
+
+        const values3 = ['bla', 'bar'];
+
+        render(tpl(values3), $container);
+        expect(Component).toHaveBeenCalledWith({
+          className: `foo ${values3[0]} ${values3[1]}`,
+          children: expect.any(Function)
+        });
+
+      });
+
+      it('handles complex classes', () => {
+
+        const Component = jest.fn();
+
+        const tpl = (values) => html`
+          <${Component} class="${values[0] ? values[1] : void 0} ${values[2]} ${values[3]}"/>
+        `;
+
+        const values = [true, 'zzz', ['yyy', 'aaa'], null];
+
+        render(tpl(values), $container);
+        expect(Component).toHaveBeenCalledWith({
+          className: `${values[1]} ${values[2].join(' ')}`,
+          children: expect.any(Function)
+        });
+
+
+        Component.mockReset();
+
+        const values2 = [false, 'zzz', 'yyy', false];
+
+        render(tpl(values2), $container);
+        expect(Component).toHaveBeenCalledWith({
+          className: `${values2[2]}`,
+          children: expect.any(Function)
+        });
+
+
+        Component.mockReset();
+
+        const values3 = [true, ['bbb'], ['yyy xxx', 'zzz']];
+
+        render(tpl(values3), $container);
+        expect(Component).toHaveBeenCalledWith({
+          className: `${values3[1].join(' ')} ${values3[2].join(' ')}`,
           children: expect.any(Function)
         });
 

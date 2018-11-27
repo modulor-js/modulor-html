@@ -124,17 +124,20 @@ function processNode($container){
         return acc;
       }, [[], []]);
       nodeCopy.attributes.push({ name, value: initial.join(' ') });
-      dynamic.length && nodeCopy.attributes.push((target, cbk) => {
+      dynamic.length && nodeCopy.attributes.push((target) => {
         return (values, prevValues) => {
-          dynamic.forEach((className) => {
+          const updated = dynamic.reduce((acc, className) => {
             const matchClass = className.match(matchChunkRegex);
             const newValue = matchClass ? values[matchClass[2]] : replaceTokens(className, values);
             const oldValue = matchClass ? prevValues[matchClass[2]] : replaceTokens(className, prevValues);
             if(oldValue !== newValue){
               oldValue && applyClassFn(oldValue, (className) => target.classList.remove(className));
               newValue && applyClassFn(newValue, (className) => target.classList.add(className));
+              return true;
             }
-          });
+            return acc;
+          }, false);
+          return [{ key: 'className', value: target.className }, updated];
         };
       });
       continue;
@@ -163,6 +166,7 @@ function processNode($container){
           }
 
           prop[preparedName] = preparedValue;
+          //precache isBoolean upper
           applyAttribute(target, { name: preparedName, value: preparedValue }, isBoolean($container[preparedName]));
           return [prop, true];
         };
@@ -223,7 +227,6 @@ function processNode($container){
     const childNodes = nodeCopy.childNodes;
     const attributes = nodeCopy.attributes;
     return (range) => {
-      let props = {};
       return (values, prevValues) => {
         const newValue = matchChunk ? values[matchChunk[2]] : replaceTokens(chunkName, values);
         const oldValue = matchChunk ? prevValues[matchChunk[2]] : replaceTokens(chunkName, prevValues);
@@ -237,14 +240,34 @@ function processNode($container){
           if(chunkType === 'function'){
 
             //maybe extract fakeEl
-            const fakeEl = {
-              props(val, updated){
-                render(newValue(val), range);
-              },
-              setAttribute: () => {},
-              removeAttribute: () => {},
-              attributes: []
-            }
+            const fakeEl = ((onPropsChange) => {
+              let classes = {};
+              return {
+                props(val, updated){
+                  render(newValue(val), range);
+                },
+                setAttribute: (name, value) => {
+                  if(name === 'class'){
+                    classes = value.split(' ').reduce((acc, className) => Object.assign(acc, {
+                      [className]: true
+                    }), {});
+                  }
+                },
+                removeAttribute: () => {},
+                classList: {
+                  add: (value) => {
+                    classes[value] = true;
+                    fakeEl.className = Object.keys(classes).join(' ').trim();
+                  },
+                  remove: (value) => {
+                    delete classes[value];
+                    fakeEl.className = Object.keys(classes).join(' ').trim();
+                  }
+                },
+                className: '',
+                attributes: []
+              }
+            })();
 
 
             const attrUpdates = copyAttributes(fakeEl, Object.assign({}, nodeCopy, {
@@ -426,7 +449,7 @@ function copyAttributes(target, source){
     const { name, value, isBoolean } = attr;
 
     applyAttribute(target, { name, value }, isBoolean);
-    props[name] = value;
+    props[name === 'class' ? 'className' : name] = value;
   }
 
   if('props' in target){
@@ -437,7 +460,7 @@ function copyAttributes(target, source){
       return [(values, prevValues) => {
         const [newProps, updated] = updates.reduce(([props, accUpdated], u) => {
           const [{ key, value }, updated] = u(values, prevValues);
-          return [Object.assign({}, props, key ? { [key]: value } : {}), accUpdated || updated];
+          return [Object.assign({}, props, getChunkType(key) === 'text' ? { [key]: value } : {}), accUpdated || updated];
         }, [props, false]);
         setProps(newProps, updated);
       }];
