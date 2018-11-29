@@ -7,6 +7,7 @@ export function emptyNode(node){
 }
 
 export function same(nodeA, nodeB){
+  //console.log(nodeA.isVirtual, nodeA.isVirtual);
   if(nodeA.nodeType !== nodeB.nodeType){
     return false;
   }
@@ -52,3 +53,5 @@ export function hash(str) {
 export function regExpEscape(literalString){
   return literalString.replace(/[-[\]{}()*+!<=:?.\/\\^$|#\s,]/g, '\\$&');
 };
+
+export function noop(){}

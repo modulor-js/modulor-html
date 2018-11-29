@@ -33,9 +33,9 @@ describe('experiment', () => {
     render(tpl({ a: [1,6,3] }), container);
     render(tpl({ a: [2,6,3] }), container);
     render(tpl({ a: [0,7,3] }), container);
-    console.log(container.innerHTML);
+    //console.log(container.innerHTML);
     render(tpl({ a: [1,8,3] }), container);
-    console.log(container.innerHTML);
+    //console.log(container.innerHTML);
     //render(tpl({ a: [3,4,5] }), container);
     //console.log(container.innerHTML);
     //render(tpl({ a: 1, c: 1 }), container);
