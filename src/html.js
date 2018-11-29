@@ -100,6 +100,7 @@ function createVirtualElement(setProps){
   let classes = {};
   const element = {
     props: setProps,
+    tagName: null,
     setAttribute: (name, value) => {
       if(name === 'class'){
         classes = value.split(' ').reduce((acc, className) => Object.assign(acc, {
@@ -176,7 +177,7 @@ function processNode($container){
 
     if(nameIsDynamic || valueIsDynamic){
       attributes.push((target) => {
-        return (values, prevValues) => {
+        return function update(values, prevValues){
           const preparedName = matchName ? values[matchName[2]] : replaceTokens(name, values);
           const preparedPrevName = matchName ? prevValues[matchName[2]] : replaceTokens(name, prevValues);
 
@@ -264,43 +265,42 @@ function processNode($container){
           return update(values);
         }
         const chunkType = getChunkType(newValue);
+
+        let container;
         if(chunkType === 'function'){
-
-          const virtualElement = createVirtualElement((value) => render(newValue(value), range));
-
-          const attrUpdates = copyAttributes(virtualElement, Object.assign({}, nodeCopy, {
-            attributes: attributes.concat((target) => (values, prevValues) => {
-              const children = (range, update) => {
-                if(update){
-                  update(values);
-                  return update;
-                }
-                const [newUpdate, initialRender] = morph({ childNodes }, range, { useDocFragment: true });
-                newUpdate(values);
-                initialRender();
-                return newUpdate;
-              };
-              return [{ key: 'children', value: children }, true];
-            })
-          }));
-
-          const newUpdate = (newValues, prevValues = values) => {
-            attrUpdates.forEach(update => update(newValues, prevValues));
-          }
-          newUpdate(values, prevValues);
-          update = newUpdate;
+          container = {
+            childNodes: [Object.assign({}, nodeCopy, {
+              createElement: () => {
+                return createVirtualElement((value) => render(newValue(value), range));
+              },
+              attributes: attributes.concat((target) => (values, prevValues) => {
+                const children = (range, update) => {
+                  if(update){
+                    update(values);
+                    return update;
+                  }
+                  const [newUpdate, initialRender] = morph({ childNodes }, range, { useDocFragment: true });
+                  newUpdate(values);
+                  initialRender();
+                  return newUpdate;
+                };
+                return [{ key: 'children', value: children }, true];
+              })
+            })]
+          };
         }
         if(chunkType === 'text'){
-          const container = {
+          container = {
             childNodes: [Object.assign({}, nodeCopy, {
               tagName: newValue
             })]
-          }
-          const [newUpdate, initialRender] = morph(container, range, { useDocFragment: true });
-          newUpdate(values);
-          initialRender();
-          update = newUpdate;
+          };
         }
+
+        const [newUpdate, initialRender] = morph(container, range, { useDocFragment: true });
+        newUpdate(values);
+        initialRender();
+        update = newUpdate;
       };
     };
   } else if(tagName){
@@ -535,16 +535,25 @@ export function morph($source, $target, options = {}){
           break;
         case ELEMENT_NODE:
           const namespaceURI = $sourceElement.namespaceURI;
-          const tagName = $sourceElement.tagName.toLowerCase();
-          const newChild = namespaceURI === DEFAULT_NAMESPACE_URI
-            ? document.createElement(tagName)
-            : document.createElementNS(namespaceURI, tagName);
+          const tagName = $sourceElement.tagName;
+          const createElement = $sourceElement.createElement;
 
-          updates = updates
-            .concat(morph($sourceElement, newChild)[0])
-            .concat(copyAttributes(newChild, $sourceElement));
+          let newChild;
+          if(isFunction(createElement)){
+            newChild = createElement();
+            updates = updates
+              .concat(copyAttributes(newChild, $sourceElement));
+          } else {
+            newChild = namespaceURI === DEFAULT_NAMESPACE_URI
+              ? document.createElement(tagName.toLowerCase())
+              : document.createElementNS(namespaceURI, tagName.toLowerCase());
 
-          domFn(newChild);
+            updates = updates
+              .concat(morph($sourceElement, newChild)[0])
+              .concat(copyAttributes(newChild, $sourceElement));
+
+            domFn(newChild);
+          }
 
           break;
       }
