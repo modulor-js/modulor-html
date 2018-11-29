@@ -544,21 +544,6 @@ export function morph($source, $target, options = {}){
           let newChild;
           if(isFunction(createElement)){
             newChild = createElement();
-            //const $sourceElementExtra = Object.assign({}, $sourceElement, {
-              //attributes: $sourceElement.attributes.concat((target) => (values, prevValues) => {
-                //const children = (range, update) => {
-                  //if(update){
-                    //update(values);
-                    //return update;
-                  //}
-                  //const [newUpdate, initialRender] = morph($sourceElementExtra, range, { useDocFragment: true });
-                  //newUpdate(values);
-                  //initialRender();
-                  //return newUpdate;
-                //};
-                //return [{ key: 'children', value: children }, true];
-              //})
-            //});
             updates = updates
               .concat(copyAttributes(newChild, $sourceElement, true));
           } else {
