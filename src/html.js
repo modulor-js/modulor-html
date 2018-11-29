@@ -266,36 +266,23 @@ function processNode($container){
         }
         const chunkType = getChunkType(newValue);
 
-        let container;
+        let modifier;
         if(chunkType === 'function'){
-          container = {
-            childNodes: [Object.assign({}, nodeCopy, {
-              createElement: () => {
-                return createVirtualElement((value) => render(newValue(value), range));
-              },
-              attributes: attributes.concat((target) => (values, prevValues) => {
-                const children = (range, update) => {
-                  if(update){
-                    update(values);
-                    return update;
-                  }
-                  const [newUpdate, initialRender] = morph({ childNodes }, range, { useDocFragment: true });
-                  newUpdate(values);
-                  initialRender();
-                  return newUpdate;
-                };
-                return [{ key: 'children', value: children }, true];
-              })
-            })]
+          modifier = {
+            createElement: () => {
+              return createVirtualElement((value) => render(newValue(value), range));
+            }
           };
         }
         if(chunkType === 'text'){
-          container = {
-            childNodes: [Object.assign({}, nodeCopy, {
-              tagName: newValue
-            })]
-          };
+          modifier = {
+            tagName: newValue
+          }
         }
+
+        const container = {
+          childNodes: [Object.assign({}, nodeCopy, modifier)]
+        };
 
         const [newUpdate, initialRender] = morph(container, range, { useDocFragment: true });
         newUpdate(values);
@@ -422,7 +409,7 @@ const chunkProcessingFunctions = {
   },
 };
 
-function copyAttributes(target, source){
+function copyAttributes(target, source, interceptChildrenRendering){
   const sourceAttributes = source.attributes;
   const targetAttributes = target.attributes;
 
@@ -446,6 +433,22 @@ function copyAttributes(target, source){
 
     applyAttribute(target, { name, value }, isBoolean);
     props[name === 'class' ? 'className' : name] = value;
+  }
+
+  if(interceptChildrenRendering){
+    updates.push((values, prevValues) => {
+      const children = (range, update) => {
+        if(update){
+          update(values);
+          return update;
+        }
+        const [newUpdate, initialRender] = morph(source, range, { useDocFragment: true });
+        newUpdate(values);
+        initialRender();
+        return newUpdate;
+      };
+      return [{ key: 'children', value: children }, true];
+    });
   }
 
   if('props' in target){
@@ -541,8 +544,23 @@ export function morph($source, $target, options = {}){
           let newChild;
           if(isFunction(createElement)){
             newChild = createElement();
+            //const $sourceElementExtra = Object.assign({}, $sourceElement, {
+              //attributes: $sourceElement.attributes.concat((target) => (values, prevValues) => {
+                //const children = (range, update) => {
+                  //if(update){
+                    //update(values);
+                    //return update;
+                  //}
+                  //const [newUpdate, initialRender] = morph($sourceElementExtra, range, { useDocFragment: true });
+                  //newUpdate(values);
+                  //initialRender();
+                  //return newUpdate;
+                //};
+                //return [{ key: 'children', value: children }, true];
+              //})
+            //});
             updates = updates
-              .concat(copyAttributes(newChild, $sourceElement));
+              .concat(copyAttributes(newChild, $sourceElement, true));
           } else {
             newChild = namespaceURI === DEFAULT_NAMESPACE_URI
               ? document.createElement(tagName.toLowerCase())
