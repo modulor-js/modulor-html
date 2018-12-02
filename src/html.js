@@ -1,4 +1,5 @@
 import { NodesRange } from './range';
+import { config, getDocument } from './config';
 import {
   emptyNode, same, hash, regExpEscape, noop,
   CHUNK_TYPE_FUNCTION, CHUNK_TYPE_ARRAY, CHUNK_TYPE_ELEMENT, CHUNK_TYPE_PROMISE, CHUNK_TYPE_UNDEFINED, CHUNK_TYPE_TEXT,
@@ -14,8 +15,6 @@ const templatesCache = {};
 
 const updatesMap = new Map();
 const rangesMap = new Map();
-
-let parser = new DOMParser();
 
 let PREFIX = `{modulor_html_chunk_${+new Date()}:`;
 let POSTFIX = '}';
@@ -35,29 +34,6 @@ let replaceChunkRegex = new RegExp(getTokenRegExp(true), 'ig');
 let matchChunkRegex = new RegExp(`^${getTokenRegExp(true)}$`);
 
 let preventChildRenderingProp = 'preventChildRendering';
-
-const config = {
-  parseMarkup: (markup) => parser.parseFromString(markup, "text/html").body,
-  document: global.document,
-  //PREFIX: `{modulor_html_chunk_${+new Date()}:`,
-  //POSTFIX: '}',
-  //sanitizeNodePrefix: `modulor_sanitize_node_${+(new Date())}:`,
-  //specialTagName: `modulor-dynamic-tag-${+new Date()}`,
-  //specialAttributeName: `modulor-chunk-${+new Date()}`,
-  //dynamicTagsRegex: getDynamicTagsRegex(),
-  //findChunksRegex: new RegExp(getTokenRegExp(), 'ig'),
-  //replaceChunkRegex: new RegExp(getTokenRegExp(true), 'ig'),
-  //matchChunkRegex: new RegExp(`^${getTokenRegExp(true)}$`),
-  //preventChildRenderingProp: 'preventChildRendering',
-};
-
-function getDocument(){
-  return config.document;
-}
-
-export function configure(extend){
-  return Object.assign(config, extend);
-}
 
 
 function replaceTokens(text, dataMap = []){
