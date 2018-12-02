@@ -1,6 +1,8 @@
 import { NodesRange } from './range';
 import {
   emptyNode, same, hash, regExpEscape, noop,
+  CHUNK_TYPE_FUNCTION, CHUNK_TYPE_ARRAY, CHUNK_TYPE_ELEMENT, CHUNK_TYPE_PROMISE, CHUNK_TYPE_UNDEFINED, CHUNK_TYPE_TEXT,
+  getChunkType,
   isSameTextNode, isDefined, isPromise, isFunction, isObject, isBoolean
 } from './helpers';
 
@@ -34,27 +36,29 @@ let matchChunkRegex = new RegExp(`^${getTokenRegExp(true)}$`);
 
 let preventChildRenderingProp = 'preventChildRendering';
 
-const CHUNK_TYPE_FUNCTION = 'function';
-const CHUNK_TYPE_ARRAY = 'array';
-const CHUNK_TYPE_ELEMENT = 'element';
-const CHUNK_TYPE_PROMISE = 'promise';
-const CHUNK_TYPE_UNDEFINED = 'undefined';
-const CHUNK_TYPE_TEXT = 'text';
+const config = {
+  parseMarkup: (markup) => parser.parseFromString(markup, "text/html").body,
+  document: global.document,
+  //PREFIX: `{modulor_html_chunk_${+new Date()}:`,
+  //POSTFIX: '}',
+  //sanitizeNodePrefix: `modulor_sanitize_node_${+(new Date())}:`,
+  //specialTagName: `modulor-dynamic-tag-${+new Date()}`,
+  //specialAttributeName: `modulor-chunk-${+new Date()}`,
+  //dynamicTagsRegex: getDynamicTagsRegex(),
+  //findChunksRegex: new RegExp(getTokenRegExp(), 'ig'),
+  //replaceChunkRegex: new RegExp(getTokenRegExp(true), 'ig'),
+  //matchChunkRegex: new RegExp(`^${getTokenRegExp(true)}$`),
+  //preventChildRenderingProp: 'preventChildRendering',
+};
 
-function getChunkType(chunk){
-  if(isFunction(chunk)){
-    return CHUNK_TYPE_FUNCTION;
-  } else if(chunk instanceof Array){
-    return CHUNK_TYPE_ARRAY;
-  } else if(chunk instanceof Node){
-    return CHUNK_TYPE_ELEMENT;
-  } else if(isPromise(chunk)){
-    return CHUNK_TYPE_PROMISE;
-  } else if(!isDefined(chunk)){
-    return CHUNK_TYPE_UNDEFINED;
-  }
-  return CHUNK_TYPE_TEXT;
+function getDocument(){
+  return config.document;
 }
+
+export function configure(extend){
+  return Object.assign(config, extend);
+}
+
 
 function replaceTokens(text, dataMap = []){
   return text.replace(replaceChunkRegex, (token, _, index) => {
@@ -244,7 +248,7 @@ function processNode($container){
     if($childNode.nodeType === COMMENT_NODE){
       if($childNode.textContent.match(findChunksRegex)){
         childNodes.push((range) => {
-          const $element = document.createComment('');
+          const $element = getDocument().createComment('');
           const content = $childNode.textContent;
           range.appendChild($element);
           return (values) => {
@@ -311,7 +315,7 @@ function processNode($container){
 }
 
 function generateContainer(markup){
-  return processNode(parser.parseFromString(markup, "text/html").body);
+  return processNode(config.parseMarkup(markup));
 };
 
 function prepareLiterals([firstChunk, ...restChunks]){
@@ -348,7 +352,7 @@ function openSelfClosingTags(str){
   return str.replace(selfClosingRegex, '<$1$2></$1>');
 };
 
-export function render(value, range = document.createDocumentFragment()){
+export function render(value, range = getDocument().createDocumentFragment()){
   const cached = updatesMap.get(range) || {};
   const chunkType = getChunkType(value);
   const { lastChunk, lastRenderedChunkType, update } = cached;
@@ -394,7 +398,7 @@ const chunkProcessingFunctions = {
   },
   [CHUNK_TYPE_UNDEFINED]: emptyNode,
   [CHUNK_TYPE_TEXT]: (range, value) => {
-    const textNode = document.createTextNode(value);
+    const textNode = getDocument().createTextNode(value);
     range.appendChild(textNode);
     return (value) => textNode.textContent = value;
   },
@@ -491,7 +495,7 @@ export function morph($source, $target, options = {}){
 
   let updates = [];
 
-  const $currentTarget = options.useDocFragment ? document.createDocumentFragment() : $target;
+  const $currentTarget = options.useDocFragment ? getDocument().createDocumentFragment() : $target;
 
   const sourceChildren = $source.childNodes;
 
@@ -547,10 +551,10 @@ export function morph($source, $target, options = {}){
       }
       switch($sourceElement.nodeType){
         case TEXT_NODE:
-          domFn(document.createTextNode($sourceElement.textContent));
+          domFn(getDocument().createTextNode($sourceElement.textContent));
           break;
         case COMMENT_NODE:
-          domFn(document.createComment($sourceElement.textContent));
+          domFn(getDocument().createComment($sourceElement.textContent));
           break;
         case ELEMENT_NODE:
           const namespaceURI = $sourceElement.namespaceURI;
@@ -562,8 +566,8 @@ export function morph($source, $target, options = {}){
             newChild = $targetElement;
           } else {
             newChild = namespaceURI === DEFAULT_NAMESPACE_URI
-              ? document.createElement(tagName.toLowerCase())
-              : document.createElementNS(namespaceURI, tagName.toLowerCase());
+              ? getDocument().createElement(tagName.toLowerCase())
+              : getDocument().createElementNS(namespaceURI, tagName.toLowerCase());
 
           }
 
@@ -626,7 +630,7 @@ export function html(chunks = [], ...values){
   }
 
 
-  function renderFn(target = document.createDocumentFragment(), result){
+  function renderFn(target = getDocument().createDocumentFragment(), result){
     if(result && result.templateId === templateId){
       return result(values);
     } else {

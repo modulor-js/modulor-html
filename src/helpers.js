@@ -55,3 +55,26 @@ export function regExpEscape(literalString){
 };
 
 export function noop(){}
+
+
+export const CHUNK_TYPE_FUNCTION = 'function';
+export const CHUNK_TYPE_ARRAY = 'array';
+export const CHUNK_TYPE_ELEMENT = 'element';
+export const CHUNK_TYPE_PROMISE = 'promise';
+export const CHUNK_TYPE_UNDEFINED = 'undefined';
+export const CHUNK_TYPE_TEXT = 'text';
+
+export function getChunkType(chunk){
+  if(isFunction(chunk)){
+    return CHUNK_TYPE_FUNCTION;
+  } else if(chunk instanceof Array){
+    return CHUNK_TYPE_ARRAY;
+  } else if(chunk instanceof Node){
+    return CHUNK_TYPE_ELEMENT;
+  } else if(isPromise(chunk)){
+    return CHUNK_TYPE_PROMISE;
+  } else if(!isDefined(chunk)){
+    return CHUNK_TYPE_UNDEFINED;
+  }
+  return CHUNK_TYPE_TEXT;
+}
