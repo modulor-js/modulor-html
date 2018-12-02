@@ -1,4 +1,6 @@
-export function NodesRange(startNode = document.createTextNode(''), stopNode = document.createTextNode('')){
+import { getDocument } from './config';
+
+export function NodesRange(startNode = getDocument().createTextNode(''), stopNode = getDocument().createTextNode('')){
 
   //@TODO: should be better here
   this.childNodes = [];

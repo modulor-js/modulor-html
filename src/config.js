@@ -1,7 +1,7 @@
 let parser = new DOMParser();
 
 export const config = {
-  parseMarkup: (markup) => parser.parseFromString(markup, "text/html").body,
+  parse: (markup) => parser.parseFromString(markup, "text/html").body,
   document: global.document,
   //PREFIX: `{modulor_html_chunk_${+new Date()}:`,
   //POSTFIX: '}',
@@ -22,3 +22,11 @@ export function configure(extend){
 export function getDocument(prop){
   return config.document;
 };
+
+export function parse(markup){
+  return config.parse(markup);
+}
+
+//export function getPrefix(){
+  //return config.PREFIX;
+//}

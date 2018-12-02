@@ -1,5 +1,5 @@
 import { NodesRange } from './range';
-import { config, getDocument } from './config';
+import { configure, getDocument, parse } from './config';
 import {
   emptyNode, same, hash, regExpEscape, noop,
   CHUNK_TYPE_FUNCTION, CHUNK_TYPE_ARRAY, CHUNK_TYPE_ELEMENT, CHUNK_TYPE_PROMISE, CHUNK_TYPE_UNDEFINED, CHUNK_TYPE_TEXT,
@@ -9,6 +9,7 @@ import {
 
 import { ELEMENT_NODE, TEXT_NODE, COMMENT_NODE, DEFAULT_NAMESPACE_URI } from './constants';
 
+export { configure };
 export { NodesRange, emptyNode };
 
 const templatesCache = {};
@@ -291,7 +292,7 @@ function processNode($container){
 }
 
 function generateContainer(markup){
-  return processNode(config.parseMarkup(markup));
+  return processNode(parse(markup));
 };
 
 function prepareLiterals([firstChunk, ...restChunks]){
