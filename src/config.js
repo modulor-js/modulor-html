@@ -23,9 +23,13 @@ export function getDocument(prop){
   return config.document;
 };
 
+export function createTextNode(content){
+  return getDocument().createTextNode(content);
+};
+
 export function parse(markup){
   return config.parse(markup);
-}
+};
 
 //export function getPrefix(){
   //return config.PREFIX;

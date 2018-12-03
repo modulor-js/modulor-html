@@ -1,6 +1,6 @@
-import { getDocument } from './config';
+import { getDocument, createTextNode } from './config';
 
-export function NodesRange(startNode = getDocument().createTextNode(''), stopNode = getDocument().createTextNode('')){
+export function NodesRange(startNode = createTextNode(''), stopNode = createTextNode('')){
 
   //@TODO: should be better here
   this.childNodes = [];

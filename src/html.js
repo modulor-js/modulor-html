@@ -1,5 +1,5 @@
 import { NodesRange } from './range';
-import { configure, getDocument, parse } from './config';
+import { configure, getDocument, createTextNode, parse } from './config';
 import {
   emptyNode, same, hash, regExpEscape, noop,
   CHUNK_TYPE_FUNCTION, CHUNK_TYPE_ARRAY, CHUNK_TYPE_ELEMENT, CHUNK_TYPE_PROMISE, CHUNK_TYPE_UNDEFINED, CHUNK_TYPE_TEXT,
@@ -375,7 +375,7 @@ const chunkProcessingFunctions = {
   },
   [CHUNK_TYPE_UNDEFINED]: emptyNode,
   [CHUNK_TYPE_TEXT]: (range, value) => {
-    const textNode = getDocument().createTextNode(value);
+    const textNode = createTextNode(value);
     range.appendChild(textNode);
     return (value) => textNode.textContent = value;
   },
@@ -528,7 +528,7 @@ export function morph($source, $target, options = {}){
       }
       switch($sourceElement.nodeType){
         case TEXT_NODE:
-          domFn(getDocument().createTextNode($sourceElement.textContent));
+          domFn(createTextNode($sourceElement.textContent));
           break;
         case COMMENT_NODE:
           domFn(getDocument().createComment($sourceElement.textContent));
