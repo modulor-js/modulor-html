@@ -27,6 +27,10 @@ export function createTextNode(content){
   return getDocument().createTextNode(content);
 };
 
+export function createComment(content){
+  return getDocument().createComment(content);
+};
+
 export function createDocumentFragment(){
   return getDocument().createDocumentFragment();
 };

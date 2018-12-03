@@ -1,5 +1,5 @@
 import { NodesRange } from './range';
-import { configure, getDocument, createTextNode, createDocumentFragment, parse } from './config';
+import { configure, getDocument, createTextNode, createDocumentFragment, createComment, parse } from './config';
 import {
   emptyNode, same, hash, regExpEscape, noop,
   CHUNK_TYPE_FUNCTION, CHUNK_TYPE_ARRAY, CHUNK_TYPE_ELEMENT, CHUNK_TYPE_PROMISE, CHUNK_TYPE_UNDEFINED, CHUNK_TYPE_TEXT,
@@ -225,7 +225,7 @@ function processNode($container){
     if($childNode.nodeType === COMMENT_NODE){
       if($childNode.textContent.match(findChunksRegex)){
         childNodes.push((range) => {
-          const $element = getDocument().createComment('');
+          const $element = createComment('');
           const content = $childNode.textContent;
           range.appendChild($element);
           return (values) => {
@@ -531,7 +531,7 @@ export function morph($source, $target, options = {}){
           domFn(createTextNode($sourceElement.textContent));
           break;
         case COMMENT_NODE:
-          domFn(getDocument().createComment($sourceElement.textContent));
+          domFn(createComment($sourceElement.textContent));
           break;
         case ELEMENT_NODE:
           const namespaceURI = $sourceElement.namespaceURI;
