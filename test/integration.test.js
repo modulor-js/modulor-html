@@ -388,6 +388,89 @@ describe('component props', () => {
     });
   });
 
+  it('calls props if it is a function on every render', () => {
+
+    const propsSetterSpy = jest.fn();
+
+    customElements.define('my-test-component-g', class extends HTMLElement {
+      props(...args){
+        propsSetterSpy(...args);
+      }
+    });
+
+    const tplF = (scope) => html`
+      <my-test-component-g attr="123" value="${scope.value}" foo="${scope.foo}" ${scope.value2}="val" />
+    `;
+
+    const container = document.createElement('div');
+
+    render(tplF({
+      value: 'bla',
+      foo: 'bar'
+    }), container);
+
+    expect(propsSetterSpy).toHaveBeenCalledTimes(1);
+    expect(propsSetterSpy).toHaveBeenCalledWith({
+      attr: '123',
+      value: 'bla',
+      foo: 'bar'
+    }, true);
+
+
+    render(tplF({
+      value: 'bla',
+      foo: 'bar'
+    }), container);
+
+    expect(propsSetterSpy).toHaveBeenCalledTimes(2);
+    expect(propsSetterSpy).toHaveBeenCalledWith({
+      attr: '123',
+      value: 'bla',
+      foo: 'bar'
+    }, false);
+
+
+    render(tplF({
+      value: 'baz',
+      value2: 'dynamicProp',
+      foo: 'bar'
+    }), container);
+
+    expect(propsSetterSpy).toHaveBeenCalledTimes(3);
+    expect(propsSetterSpy).toHaveBeenCalledWith({
+      attr: '123',
+      value: 'baz',
+      dynamicProp: 'val',
+      foo: 'bar'
+    }, true);
+
+
+    render(tplF({
+      value: 'baz',
+      foo: 'bar'
+    }), container);
+
+    expect(propsSetterSpy).toHaveBeenCalledTimes(4);
+    expect(propsSetterSpy).toHaveBeenCalledWith({
+      attr: '123',
+      value: 'baz',
+      foo: 'bar'
+    }, true);
+
+
+    render(tplF({
+      value: 'baz',
+      foo: 'quux'
+    }), container);
+
+    expect(propsSetterSpy).toHaveBeenCalledTimes(5);
+    expect(propsSetterSpy).toHaveBeenCalledWith({
+      attr: '123',
+      value: 'baz',
+      foo: 'quux'
+    }, true);
+  });
+
 });
 
 describe('directives', () => {
