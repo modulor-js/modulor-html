@@ -471,6 +471,53 @@ describe('component props', () => {
     }, true);
   });
 
+  it.only('intercepts children rendering correctly', () => {
+
+    const propsSetterSpyIntercept = jest.fn();
+    const propsSetterSpy = jest.fn();
+
+    customElements.define('my-test-component-h', class extends HTMLElement {
+      props(props, updated){
+        propsSetterSpyIntercept(props);
+      }
+      get preventChildRendering(){
+        return true;
+      }
+    });
+
+    customElements.define('my-test-component-i', class extends HTMLElement {
+      props(props, updated){
+        propsSetterSpy(props);
+      }
+    });
+
+    const tplF = (scope) => html`
+      <my-test-component-h foo="${scope.foo}">
+        <span class="test"></span>
+      </my-test-component-h>
+      <my-test-component-i foo="${scope.foo}">
+        <span class="test"></span>
+      </my-test-component-i>
+    `;
+
+    const container = document.createElement('div');
+
+    render(tplF({ foo: 'bar' }), container);
+
+    expect(propsSetterSpyIntercept).toHaveBeenCalledWith({
+      foo: 'bar',
+      children: expect.any(Function)
+    });
+
+    expect(propsSetterSpy).toHaveBeenCalledWith({
+      foo: 'bar'
+    });
+
+    expect(container.querySelector('my-test-component-h .test')).toBe(null);
+    expect(container.querySelector('my-test-component-i .test')).not.toBe(null);
+
+  });
+
 });
 
 describe('directives', () => {
