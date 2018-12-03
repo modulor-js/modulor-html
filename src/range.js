@@ -1,4 +1,4 @@
-import { getDocument, createTextNode } from './config';
+import { getDocument, createTextNode, createDocumentFragment } from './config';
 
 export function NodesRange(startNode = createTextNode(''), stopNode = createTextNode('')){
 
@@ -38,7 +38,7 @@ NodesRange.prototype.replaceChild = function($newElement, $oldElement){
 };
 
 NodesRange.prototype.extractContents = function(){
-  const $fragment = document.createDocumentFragment();
+  const $fragment = createDocumentFragment();
   $fragment.appendChild(this.startNode);
   this.childNodes.reduce(($fragment, node) => {
     $fragment.appendChild(node);

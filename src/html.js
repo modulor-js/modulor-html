@@ -1,5 +1,5 @@
 import { NodesRange } from './range';
-import { configure, getDocument, createTextNode, parse } from './config';
+import { configure, getDocument, createTextNode, createDocumentFragment, parse } from './config';
 import {
   emptyNode, same, hash, regExpEscape, noop,
   CHUNK_TYPE_FUNCTION, CHUNK_TYPE_ARRAY, CHUNK_TYPE_ELEMENT, CHUNK_TYPE_PROMISE, CHUNK_TYPE_UNDEFINED, CHUNK_TYPE_TEXT,
@@ -329,7 +329,7 @@ function openSelfClosingTags(str){
   return str.replace(selfClosingRegex, '<$1$2></$1>');
 };
 
-export function render(value, range = getDocument().createDocumentFragment()){
+export function render(value, range = createDocumentFragment()){
   const cached = updatesMap.get(range) || {};
   const chunkType = getChunkType(value);
   const { lastChunk, lastRenderedChunkType, update } = cached;
@@ -472,7 +472,7 @@ export function morph($source, $target, options = {}){
 
   let updates = [];
 
-  const $currentTarget = options.useDocFragment ? getDocument().createDocumentFragment() : $target;
+  const $currentTarget = options.useDocFragment ? createDocumentFragment() : $target;
 
   const sourceChildren = $source.childNodes;
 
@@ -607,7 +607,7 @@ export function html(chunks = [], ...values){
   }
 
 
-  function renderFn(target = getDocument().createDocumentFragment(), result){
+  function renderFn(target = createDocumentFragment(), result){
     if(result && result.templateId === templateId){
       return result(values);
     } else {

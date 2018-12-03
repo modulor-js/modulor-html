@@ -27,6 +27,12 @@ export function createTextNode(content){
   return getDocument().createTextNode(content);
 };
 
+export function createDocumentFragment(){
+  return getDocument().createDocumentFragment();
+};
+
+
+
 export function parse(markup){
   return config.parse(markup);
 };
