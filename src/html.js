@@ -18,15 +18,15 @@ let parser = new DOMParser();
 let PREFIX = `{modulor_html_chunk_${+new Date()}:`;
 let POSTFIX = '}';
 
-let sanitizeNodePrefix = `modulor_sanitize_node_${+(new Date())}:`;
+const PREPROCESS_TEMPLATE_REGEX = /<([/]?)([^ />]+)((?:\s+[\w}{:-]+(?:([\s])*=\s*(?:(?:"[^"]*")|(?:'[^']*')|[^>\s]+))?)*)\s*(\/?)[ ]*>/igm;
+
 const sanitizeTags = ['table', 'tr', 'td', 'style'];
-const sanitizeTagsRegex = new RegExp(`<([ /])?(${sanitizeTags.join('|')})([ ][^]>)?`, 'igm');
 
 let specialTagName = `modulor-dynamic-tag-${+new Date()}`;
 let specialAttributeName = `modulor-chunk-${+new Date()}`;
-let dynamicTagsRegex = getDynamicTagsRegex();
 
-const selfClosingRegex = /<([^\s]+)([ ].+)?\/([ ]+)?>/igm;
+let capitalisePrefix = `{modulor_capitalize-${+(new Date())}:`;
+let capitaliseRegex = new RegExp(`${regExpEscape(capitalisePrefix)}([a-z]+)${regExpEscape(POSTFIX)}`, 'g');
 
 let findChunksRegex = new RegExp(getTokenRegExp(), 'ig');
 let replaceChunkRegex = new RegExp(getTokenRegExp(true), 'ig');
@@ -151,7 +151,10 @@ function processNode($container){
 
   const childAttributes = $container.attributes || [];
   for(let j = 0; j < childAttributes.length; j++){
-    const { name, value }  = childAttributes[j];
+    const value = childAttributes[j].value;
+    const name = childAttributes[j].name.replace(capitaliseRegex, (_, letter) => {
+      return letter.toUpperCase();
+    });
     if(name === specialAttributeName){
       continue;
     }
@@ -267,43 +270,46 @@ function processNode($container){
     const chunkName = $container.attributes[specialAttributeName].value;
     const matchChunk = chunkName.match(matchChunkRegex);
 
-    return (range) => {
-      let update;
-      return (values, prevValues) => {
-        const newValue = matchChunk ? values[matchChunk[2]] : replaceTokens(chunkName, values);
-        const oldValue = matchChunk ? prevValues[matchChunk[2]] : replaceTokens(chunkName, prevValues);
+    if(chunkName.match(findChunksRegex)){
+      return (range) => {
+        let update;
+        return (values, prevValues) => {
+          const newValue = matchChunk ? values[matchChunk[2]] : replaceTokens(chunkName, values);
+          const oldValue = matchChunk ? prevValues[matchChunk[2]] : replaceTokens(chunkName, prevValues);
 
-        if(update && newValue === oldValue){
-          return update(values);
-        }
-        const chunkType = getChunkType(newValue);
+          if(update && newValue === oldValue){
+            return update(values);
+          }
+          const chunkType = getChunkType(newValue);
 
-        const container = {
-          childNodes: [Object.assign({}, nodeCopy, {
-            tagName: newValue
-          })]
-        };
-
-        if(chunkType === CHUNK_TYPE_FUNCTION){
-          const target = {
-            appendChild: noop,
-            replaceChild: noop,
-            childNodes: [createVirtualElement({
-              props: (value) => render(newValue(value), range)
+          const container = {
+            childNodes: [Object.assign({}, nodeCopy, {
+              tagName: newValue
             })]
           };
-          [update] = morph(container, target);
-          return update(values);
-        }
 
-        const [newUpdate, initialRender] = morph(container, range, { useDocFragment: true });
-        newUpdate(values);
-        initialRender();
-        update = newUpdate;
+          if(chunkType === CHUNK_TYPE_FUNCTION){
+            const target = {
+              appendChild: noop,
+              replaceChild: noop,
+              childNodes: [createVirtualElement({
+                props: (value) => render(newValue(value), range)
+              })]
+            };
+            [update] = morph(container, target);
+            return update(values);
+          }
+
+          const [newUpdate, initialRender] = morph(container, range, { useDocFragment: true });
+          newUpdate(values);
+          initialRender();
+          update = newUpdate;
+        };
       };
-    };
+    }
+    nodeCopy.tagName = chunkName.toUpperCase();
   } else if(tagName){
-    nodeCopy.tagName = $container.tagName.toLowerCase().replace(sanitizeNodePrefix, '').toUpperCase();
+    nodeCopy.tagName = $container.tagName.toUpperCase();
   }
 
 
@@ -326,26 +332,31 @@ function getTokenRegExp(groupMatches){
   return `(${regExpEscape(PREFIX)}${indexRegex}${regExpEscape(POSTFIX)})`;
 };
 
-function sanitize(str){
-  return str.replace(sanitizeTagsRegex, `<$1${sanitizeNodePrefix}$2`);
-};
+function preprocess(str){
 
-function getDynamicTagsRegex(groupMatches = false){
-  const tokenRegEx = `(${regExpEscape(PREFIX)}([^ >]+)${regExpEscape(POSTFIX)})`;
-  return new RegExp(`(<([ /])?)(([^ >]+)?(${tokenRegEx})([a-zA-Z0-9-_]+)?)(([ ][^])?>)?`, 'igm');
-}
+  return str.replace(PREPROCESS_TEMPLATE_REGEX, (input, isClosing, tagName, attrs, _, isSelfClosing) => {
 
-function replaceDynamicTags(str){
-  return str.replace(dynamicTagsRegex, (...args) => {
-    const [_, opening, isClosing, chunkName, __, ___, suffix, ____, _____, closing] = args;
-    return isClosing
-      ? `</${specialTagName}>`
-      : `${opening}${specialTagName} ${specialAttributeName}="${chunkName}"${closing || ''}`
+    //TODO: make this workaround a part of regex, test case: test/html/processing.test.js:300
+    attrs = attrs.replace(/\/$/, () => {
+      isSelfClosing = '/';
+      return '';
+    }).replace(/(?:[ ]|^)([^ ="'/]+)(?=[= ]|$)/igm, (attrName) => {
+      return attrName.replace(/[A-Z]/gm, letter => `${capitalisePrefix}${letter}${POSTFIX}`);
+    });
+
+    if(~sanitizeTags.indexOf(tagName) || tagName.match(findChunksRegex)){
+      attrs = ` ${specialAttributeName}="${tagName.trim()}"${attrs}`;
+      tagName = specialTagName;
+    }
+
+    if(isSelfClosing){
+      return `<${tagName}${attrs}></${tagName}>`
+    }
+    if(isClosing){
+      return `</${tagName}>`;
+    }
+    return `<${isClosing}${tagName}${attrs}>`;
   });
-};
-
-function openSelfClosingTags(str){
-  return str.replace(selfClosingRegex, '<$1$2></$1>');
 };
 
 export function render(value, range = document.createDocumentFragment()){
@@ -619,7 +630,7 @@ export function html(chunks = [], ...values){
 
   if(!isDefined(cached)){
     const template = prepareLiterals(chunks);
-    container = generateContainer(sanitize(openSelfClosingTags(replaceDynamicTags(template))));
+    container = generateContainer(preprocess(template));
     templatesCache[templateId] = container;
   } else {
     container = cached;
@@ -652,17 +663,20 @@ export function stopNode(){};
 if(process.env.NODE_ENV === 'test'){
   Object.assign(module.exports, {
     replaceTokens, processNode, generateContainer,
-    sanitize, copyAttributes, prepareLiterals, openSelfClosingTags, replaceDynamicTags,
+    copyAttributes, prepareLiterals,
+    preprocess,
     setPrefix: (value) => PREFIX = value,
     setPostfix: (value) => POSTFIX = value,
-    setSanitizeNodePrefix: (value) => sanitizeNodePrefix = value,
+    setCapitalisePrefix: (value) => {
+      capitalisePrefix = value;
+      capitaliseRegex = new RegExp(`${regExpEscape(capitalisePrefix)}([a-z]+)${regExpEscape(POSTFIX)}`, 'g');
+    },
     setSpecialTagName: (value) => specialTagName = value,
     setSpecialAttributeName: (value) => specialAttributeName = value,
     updateChunkRegexes: () => {
       findChunksRegex = new RegExp(getTokenRegExp(), 'ig');
       replaceChunkRegex = new RegExp(getTokenRegExp(true), 'ig');
       matchChunkRegex = new RegExp(`^${getTokenRegExp(true)}$`);
-      dynamicTagsRegex = getDynamicTagsRegex();
     }
   });
 }

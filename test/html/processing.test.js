@@ -1,13 +1,13 @@
 import {
-  html, prepareLiterals, replaceTokens, sanitize, openSelfClosingTags, replaceDynamicTags,
-  setPrefix, setPostfix, setSanitizeNodePrefix, updateChunkRegexes, setSpecialTagName, setSpecialAttributeName
+  html, prepareLiterals, replaceTokens,
+  setPrefix, setPostfix, updateChunkRegexes, setSpecialTagName, setSpecialAttributeName, setCapitalisePrefix, preprocess
 } from '../../src/html';
 
 setPrefix('{modulor_html_chunk:');
 setPostfix('}');
-setSanitizeNodePrefix('sanitize:');
 setSpecialTagName('modulor-dynamic-tag');
 setSpecialAttributeName('modulor-chunk');
+setCapitalisePrefix('{modulor_capitalize:');
 updateChunkRegexes();
 
 it('is a function', () => {
@@ -80,15 +80,14 @@ describe('sanitize', () => {
     },
     {
       input: '<table attr-one="1"></table>',
-      expectation: '<sanitize:table attr-one="1"></sanitize:table>'
+      expectation: '<modulor-dynamic-tag modulor-chunk="table" attr-one="1"></modulor-dynamic-tag>'
     },
     {
       input: `<table attr-one="1"
       foo=bar bla baz="ok"
       ></table>`,
-      expectation: `<sanitize:table attr-one="1"
-      foo=bar bla baz="ok"
-      ></sanitize:table>`
+      expectation: `<modulor-dynamic-tag modulor-chunk="table" attr-one="1"
+      foo=bar bla baz="ok"></modulor-dynamic-tag>`
     },
     {
       input: `
@@ -103,15 +102,15 @@ describe('sanitize', () => {
         </table>
       `,
       expectation: `
-        <sanitize:table>
-          <sanitize:tr>
-            <sanitize:td>foo</sanitize:td>
-            <sanitize:td></sanitize:td>
-          </sanitize:tr>
-          <sanitize:tr>
-            <sanitize:td><div></div></sanitize:td>
-          </sanitize:tr>
-        </sanitize:table>
+        <modulor-dynamic-tag modulor-chunk="table">
+          <modulor-dynamic-tag modulor-chunk="tr">
+            <modulor-dynamic-tag modulor-chunk="td">foo</modulor-dynamic-tag>
+            <modulor-dynamic-tag modulor-chunk="td"></modulor-dynamic-tag>
+          </modulor-dynamic-tag>
+          <modulor-dynamic-tag modulor-chunk="tr">
+            <modulor-dynamic-tag modulor-chunk="td"><div></div></modulor-dynamic-tag>
+          </modulor-dynamic-tag>
+        </modulor-dynamic-tag>
       `
     },
     {
@@ -121,15 +120,15 @@ describe('sanitize', () => {
         </style>
       `,
       expectation: `
-        <sanitize:style>
+        <modulor-dynamic-tag modulor-chunk="style">
           .foo > .bar {  }
-        </sanitize:style>
+        </modulor-dynamic-tag>
       `
     },
   ]
   testSets.forEach((testSet, index) => {
     it(`set #${index}`, () => {
-      expect(sanitize(testSet.input)).toBe(testSet.expectation);
+      expect(preprocess(testSet.input)).toBe(testSet.expectation);
     });
   })
 });
@@ -152,7 +151,7 @@ describe('open self closing tags', () => {
     },
     {
       input: '<input   /  >',
-      expectation: '<input   ></input>'
+      expectation: '<input></input>'
     },
     {
       input: '<{modulor_html_chunk_234234:123}/>',
@@ -177,7 +176,7 @@ describe('open self closing tags', () => {
   ]
   testSets.forEach((testSet, index) => {
     it(`set #${index}`, () => {
-      expect(openSelfClosingTags(testSet.input)).toBe(testSet.expectation);
+      expect(preprocess(testSet.input)).toBe(testSet.expectation);
     });
   })
 });
@@ -192,11 +191,11 @@ describe('replaceDynamicTags', () => {
     },
     {
       input: '<{modulor_html_chunk:0}/>',
-      expectation: '<modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:0}"/>'
+      expectation: '<modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:0}"></modulor-dynamic-tag>'
     },
     {
       input: '<{modulor_html_chunk:0} foo="bar"/>',
-      expectation: '<modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:0}" foo="bar"/>'
+      expectation: '<modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:0}" foo="bar"></modulor-dynamic-tag>'
     },
     {
       input: '<x-{modulor_html_chunk:1}></x-{modulor_html_chunk:2}>',
@@ -238,8 +237,7 @@ describe('replaceDynamicTags', () => {
       `,
       expectation: `
         <modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:0}" foo="{modulor_html_chunk:1}" {modulor_html_chunk:1}="{modulor_html_chunk:2}">
-          <modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:3}"
-            bla="test">
+          <modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:3}"            bla="test">
           </modulor-dynamic-tag>
         </modulor-dynamic-tag>
       `
@@ -254,8 +252,7 @@ describe('replaceDynamicTags', () => {
       `,
       expectation: `
         <modulor-dynamic-tag modulor-chunk="x-{modulor_html_chunk:0}-y" foo="{modulor_html_chunk:1}" {modulor_html_chunk:1}="{modulor_html_chunk:2}">
-          <modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:3}-foo"
-            bla="test">
+          <modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:3}-foo"            bla="test">
           </modulor-dynamic-tag>
         </modulor-dynamic-tag>
       `
@@ -282,11 +279,50 @@ describe('replaceDynamicTags', () => {
         {modulor_html_chunk:7}
       `
     },
+    {
+      input: `
+        <span id="component-b">
+          <{modulor_html_chunk:0} foo={modulor_html_chunk:1}>
+            <p>{modulor_html_chunk:2}</p>
+          </{modulor_html_chunk:2}>
+        </span>
+      `,
+      expectation: `
+        <span id="component-b">
+          <modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:0}" foo={modulor_html_chunk:1}>
+            <p>{modulor_html_chunk:2}</p>
+          </modulor-dynamic-tag>
+        </span>
+      `
+    },
+    {
+      input: `
+        <x-foo value={modulor_html_chunk:0}/>
+      `,
+      expectation: `
+        <x-foo value={modulor_html_chunk:0}></x-foo>
+      `
+    },
   ]
   testSets.forEach((testSet, index) => {
     it(`set #${index}`, () => {
-      expect(replaceDynamicTags(testSet.input)).toBe(testSet.expectation);
+      expect(preprocess(testSet.input)).toBe(testSet.expectation);
     });
   })
 });
 
+describe('capitalize', () => {
+
+  const testSets = [
+    {
+      input: '<div fooBar="12" foo barBaz bla-Ok=234></div>',
+      expectation: '<div foo{modulor_capitalize:B}ar="12" foo bar{modulor_capitalize:B}az bla-{modulor_capitalize:O}k=234></div>'
+    },
+  ];
+
+  testSets.forEach((testSet, index) => {
+    it(`set #${index}`, () => {
+      expect(preprocess(testSet.input)).toBe(testSet.expectation);
+    });
+  })
+});

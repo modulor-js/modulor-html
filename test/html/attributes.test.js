@@ -1,9 +1,10 @@
 import {
-  html, render, r, createHtml, copyAttributes, processNode, setPrefix, setPostfix, updateChunkRegexes
+  html, render, r, createHtml, copyAttributes, processNode, setPrefix, setPostfix, updateChunkRegexes, setCapitalisePrefix,
 } from '../../src/html';
 
 setPrefix('{modulor_html_chunk:');
 setPostfix('}');
+setCapitalisePrefix('{modulor_capitalize:');
 
 updateChunkRegexes();
 
@@ -174,6 +175,27 @@ describe('copy attributes', () => {
     updates.forEach(u => u(data, []));
 
     expect(target.getAttribute('style')).toBe('display: block; margin-right: 0px;');
+  });
+
+  it('capitalises attribute names correctly', () => {
+    const element = document.createElement('div');
+    element.innerHTML = `
+      <input
+        foo{modulor_capitalize:B}ar="12"
+        foo
+        bar{modulor_capitalize:B}az
+        bla-{modulor_capitalize:O}k=234
+        one{modulor_capitalize:t}wo{modulor_capitalize:F}our=2 />
+    `;
+
+    const source = processNode(element.querySelector('input'));
+    expect(source.attributes).toMatchObject([
+      { name: 'fooBar', value: '12', isBoolean: false },
+      { name: 'foo', value: '', isBoolean: false },
+      { name: 'barBaz', value: '', isBoolean: false },
+      { name: 'bla-Ok', value: '234', isBoolean: false },
+      { name: 'oneTwoFour', value: '2', isBoolean: false },
+    ]);
   });
 });
 
