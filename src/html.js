@@ -25,11 +25,9 @@ const sanitizeTags = ['table', 'tr', 'td', 'style'];
 
 let specialTagName = `modulor-dynamic-tag-${+new Date()}`;
 let specialAttributeName = `modulor-chunk-${+new Date()}`;
+let dataAttributeName = `modulor-data-attributes-${+new Date()}`;
 
-let capitalisePrefix = `{modulor_capitalize-${+(new Date())}:`;
-let capitaliseRegex = new RegExp(`${regExpEscape(capitalisePrefix)}([a-z]+)${regExpEscape(POSTFIX)}`, 'g');
-
-let findChunksRegex = new RegExp(getTokenRegExp(), 'ig');
+let findChunksRegex = new RegExp(getTokenRegExp(), 'i');
 let replaceChunkRegex = new RegExp(getTokenRegExp(true), 'ig');
 let matchChunkRegex = new RegExp(`^${getTokenRegExp(true)}$`);
 
@@ -57,19 +55,21 @@ function getChunkType(chunk){
   return CHUNK_TYPE_TEXT;
 }
 
-function replaceTokens(text, dataMap = []){
+function replaceTokens(text, dataMap = [], matchChunk){
+  if(matchChunk){
+    return dataMap[matchChunk[2]];
+  }
   return text.replace(replaceChunkRegex, (token, _, index) => {
     const chunk = dataMap[index];
     return isDefined(chunk) ? chunk : '';
   });
 };
 
-function applyAttribute(target, { name, value }, isBoolean){
+function applyAttribute(target, { name, value }){
   if(isPromise(value)){
-    value.then((result) => applyAttribute(target, { name, value: result }, isBoolean));
+    value.then((result) => applyAttribute(target, { name, value: result }));
     return;
   }
-
   if(name === 'style'){
     isObject(value)
       ? Object.assign(target.style, value)
@@ -82,9 +82,8 @@ function applyAttribute(target, { name, value }, isBoolean){
     return;
   }
 
-  const forceSetAttribute = isBoolean && value === '';
-
-  if(!forceSetAttribute && name in target){
+  if(name in target){
+    isBoolean(target[name]) && (value !== false) && target.setAttribute(name, value);
     try {
       target[name] = value;
       return;
@@ -138,6 +137,38 @@ function createVirtualElement(extend){
   return element;
 };
 
+function createCompare(applyFn, deleteFn){
+  const values = new Map();
+  const set = (key, value) => {
+    values.set(key, {
+      value: value,
+      updated: (values.get(key) || {}).value !== value,
+      keep: true,
+    })
+  };
+  const update = () => {
+    const valuesObject = {};
+    let valuesUpdated = false;
+    values.forEach(({ updated, value, keep }, key) => {
+      if(!keep){
+        values.delete(key);
+        valuesUpdated = true;
+        return deleteFn(key, value);
+      }
+      if(updated){
+        valuesUpdated = true;
+        applyFn(key, value);
+      }
+      (typeof key === 'string') && (valuesObject[key] = value);
+      values.set(key, {
+        value: value,
+        keep: false
+      });
+    });
+    return [valuesUpdated, valuesObject];
+  };
+  return [set, update];
+};
 
 function processNode($container){
   const nodeCopy = {
@@ -148,121 +179,115 @@ function processNode($container){
     childNodes: [],
   };
 
-  const { attributes, childNodes } = nodeCopy;
+  const { childNodes } = nodeCopy;
 
-  const childAttributes = $container.attributes || [];
-  for(let j = 0; j < childAttributes.length; j++){
-    const value = childAttributes[j].value;
-    const name = childAttributes[j].name.replace(capitaliseRegex, (_, letter) => {
-      return letter.toUpperCase();
-    });
-    if(name === specialAttributeName){
-      continue;
-    }
+  const attrsData = $container.getAttribute(dataAttributeName);
+  const isDynamic = findChunksRegex.exec(attrsData);
 
-    const nameIsDynamic = name.match(findChunksRegex);
-    const valueIsDynamic = value.match(findChunksRegex);
+  const attrsList = attrsData ? JSON.parse(attrsData).map(({ name, value = true }) => ({
+    name,
+    value,
+    matchName: matchChunkRegex.exec(name),
+    matchValue: matchChunkRegex.exec(value),
+    nameIsDynamic: findChunksRegex.test(name),
+    valueIsDynamic: findChunksRegex.test(value),
+  })) : [];
 
-    const matchName = name.match(matchChunkRegex);
-    const matchValue = value.match(matchChunkRegex);
+  nodeCopy.attributes = isDynamic ? [(target) => {
+    const [setAttr, updateAttrs] = createCompare(
+      (name, value) => applyAttribute(target, { name, value }),
+      (name) => {
+        target.removeAttribute(name);
+        isBoolean(target[name]) && (target[name] = false);
+      }
+    );
+    const [setClass, updateClasses] = createCompare(
+      (key) => applyClassFn(key, (className) => target.classList.add(className)),
+      (key) => applyClassFn(key, (className) => target.classList.remove(className))
+    );
 
-    if(name === 'class'){
-      const [dynamic, initial] = value.split(' ').reduce((acc, className) => {
-        acc[className.match(findChunksRegex) ? 0 : 1].push(className);
-        return acc;
-      }, [[], []]);
-      attributes.push({ name, value: initial.join(' ') });
-      dynamic.length && attributes.push((target) => {
-        return (values, prevValues) => {
-          const updated = dynamic.reduce((acc, className) => {
-            const matchClass = className.match(matchChunkRegex);
-            const newValue = matchClass ? values[matchClass[2]] : replaceTokens(className, values);
-            const oldValue = matchClass ? prevValues[matchClass[2]] : replaceTokens(className, prevValues);
-            if(oldValue !== newValue){
-              oldValue && applyClassFn(oldValue, (className) => target.classList.remove(className));
-              newValue && applyClassFn(newValue, (className) => target.classList.add(className));
-              return true;
-            }
-            return acc;
-          }, false);
-          return [{ key: 'className', value: target.className }, updated];
-        };
-      });
-      continue;
-    }
+    return function update(values){
+      const newAttrValues = {};
+      let attrsUpdated = false;
+      for(let index in attrsList){
+        const { name, value, matchName, matchValue, nameIsDynamic, valueIsDynamic } = attrsList[index];
 
-    if(nameIsDynamic || valueIsDynamic){
-      attributes.push((target) => {
-        return function update(values, prevValues){
-          const preparedName = matchName ? values[matchName[2]] : replaceTokens(name, values);
-          const preparedPrevName = matchName ? prevValues[matchName[2]] : replaceTokens(name, prevValues);
+        const preparedName = nameIsDynamic ? replaceTokens(name, values, matchName) : name;
 
-          const preparedValue = matchValue ? values[matchValue[2]] : replaceTokens(value, values);
-          const preparedPrevValue = matchValue ? prevValues[matchValue[2]] : replaceTokens(value, prevValues);
-
-          const prop = { key: preparedName, value: preparedValue };
-          if(preparedName === preparedPrevName && preparedValue === preparedPrevValue){
-            return [prop, false];
+        if(preparedName === 'class'){
+          const classes = value.split(' ');
+          for(let index in classes){
+            const className = classes[index];
+            const newValue = replaceTokens(className, values, className.match(matchChunkRegex));
+            newValue && setClass(newValue, true);
           }
+          const [classUpdated] = updateClasses();
+          attrsUpdated = attrsUpdated || classUpdated;
 
-          if(preparedName !== preparedPrevName){
-            target.removeAttribute(preparedPrevName);
+          newAttrValues.className = target.className;
+          continue;
+        }
+
+        const preparedValue = valueIsDynamic ? replaceTokens(value, values, matchValue) : value;
+
+        if(!preparedName){
+          continue;
+        }
+
+        if(isObject(preparedName)){
+          for(let key in preparedName){
+            setAttr(key, preparedName[key]);
           }
+        } else {
+          setAttr(preparedName, preparedValue);
+        }
+      }
 
-          if(!preparedName){
-            return [prop, true];
-          }
+      const [attributesUpdated, attributesValues] = updateAttrs();
 
-          prop[preparedName] = preparedValue;
-          applyAttribute(target, { name: preparedName, value: preparedValue }, isBoolean($container[preparedName]));
-          return [prop, true];
-        };
-
-      });
-    } else {
-      attributes.push({ name, value, isBoolean: isBoolean($container[name]) });
-    }
-  }
+      return [
+        Object.assign(newAttrValues, attributesValues),
+        attrsUpdated || attributesUpdated
+      ];
+    };
+  }] : attrsList;
 
   const containerChildNodes = $container.childNodes || [];
   for(let i = 0; i < containerChildNodes.length; i++){
     const $childNode = containerChildNodes[i];
+
     if($childNode.nodeType === TEXT_NODE){
-      const chunks = $childNode.textContent.split(findChunksRegex);
-      chunks.filter(chunk => !!chunk).forEach((chunk) => {
-        const match = chunk.match(matchChunkRegex);
-        if(match){
-          const matchIndex = match[2];
-          childNodes.push((range) => {
-            return (values) => render(values[matchIndex], range);
-          });
-        } else {
-          childNodes.push({
-            nodeType: TEXT_NODE,
-            textContent: chunk,
-          });
+      $childNode.textContent.split(findChunksRegex).forEach((chunk) => {
+        if(!chunk){
+          return;
         }
+        const match = matchChunkRegex.exec(chunk);
+        childNodes.push(match ? (range) => {
+          return (values) => render(values[match[2]], range);
+        } : {
+          nodeType: TEXT_NODE,
+          textContent: chunk,
+        });
       });
       continue;
     }
+
     if($childNode.nodeType === COMMENT_NODE){
-      if($childNode.textContent.match(findChunksRegex)){
-        childNodes.push((range) => {
-          const $element = document.createComment('');
-          const content = $childNode.textContent;
-          range.appendChild($element);
-          return (values) => {
-            $element.textContent = replaceTokens(content, values);
-          };
-        });
-      } else {
-        childNodes.push({
-          nodeType: COMMENT_NODE,
-          textContent: $childNode.textContent,
-        });
-      }
+
+      childNodes.push($childNode.textContent.match(findChunksRegex) ? (range) => {
+        const $element = document.createComment('');
+        const content = $childNode.textContent;
+        range.appendChild($element);
+        return (values) => {
+          $element.textContent = replaceTokens(content, values);
+        };
+      } : {
+        nodeType: COMMENT_NODE,
+        textContent: $childNode.textContent,
+      });
       continue;
     }
+
     childNodes.push(processNode($childNode));
   }
 
@@ -275,8 +300,8 @@ function processNode($container){
       return (range) => {
         let update;
         return (values, prevValues) => {
-          const newValue = matchChunk ? values[matchChunk[2]] : replaceTokens(chunkName, values);
-          const oldValue = matchChunk ? prevValues[matchChunk[2]] : replaceTokens(chunkName, prevValues);
+          const newValue = replaceTokens(chunkName, values, matchChunk);
+          const oldValue = replaceTokens(chunkName, prevValues, matchChunk);
 
           if(update && newValue === oldValue){
             return update(values);
@@ -338,13 +363,17 @@ function preprocess(str){
   return str.replace(PREPROCESS_TEMPLATE_REGEX, (input, isClosing, tagName, attrs, _, isSelfClosing) => {
 
     //TODO: make this workaround a part of regex, test case: test/html/processing.test.js:300
-
     attrs = attrs.replace(/\/$/, () => {
       isSelfClosing = '/';
       return '';
-    }).replace(PREPROCESS_ATTR_REGEX, (attrBlock, attrName) => {
-      return attrBlock.replace(attrName, attrName.replace(/[A-Z]/gm, letter => `${capitalisePrefix}${letter}${POSTFIX}`));
     });
+
+    const match = attrs.match(PREPROCESS_ATTR_REGEX);
+
+    attrs = (match && tagName !== '!--') ? ` ${dataAttributeName}='${JSON.stringify(match.reduce((acc, attr) => {
+      const [name, value] = attr.split('=');
+      return acc.concat({ name, value: value ? value.replace(/^['"]([^'"]*)['"]$/, '$1') : undefined });
+    }, []))}'` : attrs;
 
     if(~sanitizeTags.indexOf(tagName) || tagName.match(findChunksRegex)){
       attrs = ` ${specialAttributeName}="${tagName.trim()}"${attrs}`;
@@ -454,14 +483,14 @@ function copyAttributes(target, source, interceptChildrenRendering){
       continue;
     }
 
-    const { name, value, isBoolean } = attr;
+    const { name, value } = attr;
 
-    applyAttribute(target, { name, value }, isBoolean);
+    applyAttribute(target, { name, value });
     props[name === 'class' ? 'className' : name] = value;
   }
 
   if(target[preventChildRenderingProp]){
-    updates.push((values, prevValues) => {
+    updates.push((values) => {
       const children = (range, update) => {
         if(update){
           update(values);
@@ -472,7 +501,7 @@ function copyAttributes(target, source, interceptChildrenRendering){
         initialRender();
         return newUpdate;
       };
-      return [{ key: 'children', value: children }, true];
+      return [{ children }, true];
     });
   }
 
@@ -483,9 +512,8 @@ function copyAttributes(target, source, interceptChildrenRendering){
     if(updates.length){
       return [(values, prevValues) => {
         const [newProps, updated] = updates.reduce(([props, accUpdated], u) => {
-          const [{ key, value }, updated] = u(values, prevValues);
-          const prop = (typeof key === 'string' || typeof key === 'number') ? { [key]: value } : {};
-          return [Object.assign({}, props, prop), accUpdated || updated];
+          const [updatedProps, updated] = u(values, prevValues);
+          return [Object.assign({}, props, updatedProps), accUpdated || updated];
         }, [props, false]);
         setProps(newProps, updated);
       }];
@@ -675,8 +703,9 @@ if(process.env.NODE_ENV === 'test'){
     },
     setSpecialTagName: (value) => specialTagName = value,
     setSpecialAttributeName: (value) => specialAttributeName = value,
+    setDataAttributeName: (value) => dataAttributeName = value,
     updateChunkRegexes: () => {
-      findChunksRegex = new RegExp(getTokenRegExp(), 'ig');
+      findChunksRegex = new RegExp(getTokenRegExp(), 'i');
       replaceChunkRegex = new RegExp(getTokenRegExp(true), 'ig');
       matchChunkRegex = new RegExp(`^${getTokenRegExp(true)}$`);
     }

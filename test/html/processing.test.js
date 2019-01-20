@@ -1,13 +1,13 @@
 import {
   html, prepareLiterals, replaceTokens,
-  setPrefix, setPostfix, updateChunkRegexes, setSpecialTagName, setSpecialAttributeName, setCapitalisePrefix, preprocess
+  setPrefix, setPostfix, updateChunkRegexes, setSpecialTagName, setSpecialAttributeName, setDataAttributeName, preprocess
 } from '../../src/html';
 
 setPrefix('{modulor_html_chunk:');
 setPostfix('}');
 setSpecialTagName('modulor-dynamic-tag');
 setSpecialAttributeName('modulor-chunk');
-setCapitalisePrefix('{modulor_capitalize:');
+setDataAttributeName('attrs-data');
 updateChunkRegexes();
 
 it('is a function', () => {
@@ -80,14 +80,13 @@ describe('sanitize', () => {
     },
     {
       input: '<table attr-one="1"></table>',
-      expectation: '<modulor-dynamic-tag modulor-chunk="table" attr-one="1"></modulor-dynamic-tag>'
+      expectation: `<modulor-dynamic-tag modulor-chunk="table" attrs-data='[{\"name\":\"attr-one\",\"value\":\"1\"}]'></modulor-dynamic-tag>`
     },
     {
       input: `<table attr-one="1"
       foo=bar bla baz="ok"
       ></table>`,
-      expectation: `<modulor-dynamic-tag modulor-chunk="table" attr-one="1"
-      foo=bar bla baz="ok"></modulor-dynamic-tag>`
+      expectation: `<modulor-dynamic-tag modulor-chunk="table" attrs-data='[{\"name\":\"attr-one\",\"value\":\"1\"},{\"name\":\"foo\",\"value\":\"bar\"},{\"name\":\"bla\"},{\"name\":\"baz\",\"value\":\"ok\"}]'></modulor-dynamic-tag>`
     },
     {
       input: `
@@ -143,11 +142,11 @@ describe('open self closing tags', () => {
     },
     {
       input: '<my-component foo="blah"/>',
-      expectation: '<my-component foo="blah"></my-component>'
+      expectation: `<my-component attrs-data='[{\"name\":\"foo\",\"value\":\"blah\"}]'></my-component>`
     },
     {
       input: '<my-component disabled foo="blah />"/>',
-      expectation: '<my-component disabled foo="blah />"></my-component>'
+      expectation: `<my-component attrs-data='[{\"name\":\"disabled\"},{\"name\":\"foo\",\"value\":\"blah />\"}]'></my-component>`
     },
     {
       input: '<input   /  >',
@@ -169,7 +168,7 @@ describe('open self closing tags', () => {
         <div>
           <img>
           <span></span>
-          <my-component disabled foo="blah />"></my-component>
+          <my-component attrs-data='[{\"name\":\"disabled\"},{\"name\":\"foo\",\"value\":\"blah />\"}]'></my-component>
         </div>
       `
     },
@@ -195,7 +194,7 @@ describe('replaceDynamicTags', () => {
     },
     {
       input: '<{modulor_html_chunk:0} foo="bar"/>',
-      expectation: '<modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:0}" foo="bar"></modulor-dynamic-tag>'
+      expectation: `<modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:0}" attrs-data='[{\"name\":\"foo\",\"value\":\"bar\"}]'></modulor-dynamic-tag>`
     },
     {
       input: '<x-{modulor_html_chunk:1}></x-{modulor_html_chunk:2}>',
@@ -203,15 +202,15 @@ describe('replaceDynamicTags', () => {
     },
     {
       input: '<{modulor_html_chunk:1}-test foo="bar"></{modulor_html_chunk:2}>',
-      expectation: '<modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:1}-test" foo="bar"></modulor-dynamic-tag>'
+      expectation: `<modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:1}-test" attrs-data='[{\"name\":\"foo\",\"value\":\"bar\"}]'></modulor-dynamic-tag>`
     },
     {
       input: '<x-{modulor_html_chunk:1}-test foo="bar"></x-{modulor_html_chunk:2}>',
-      expectation: '<modulor-dynamic-tag modulor-chunk="x-{modulor_html_chunk:1}-test" foo="bar"></modulor-dynamic-tag>'
+      expectation: `<modulor-dynamic-tag modulor-chunk="x-{modulor_html_chunk:1}-test" attrs-data='[{\"name\":\"foo\",\"value\":\"bar\"}]'></modulor-dynamic-tag>`
     },
     {
       input: '<x-{modulor_html_chunk:1}-test-{modulor_html_chunk:2} foo="bar"></x-{modulor_html_chunk:3}>',
-      expectation: '<modulor-dynamic-tag modulor-chunk="x-{modulor_html_chunk:1}-test-{modulor_html_chunk:2}" foo="bar"></modulor-dynamic-tag>'
+      expectation: `<modulor-dynamic-tag modulor-chunk="x-{modulor_html_chunk:1}-test-{modulor_html_chunk:2}" attrs-data='[{\"name\":\"foo\",\"value\":\"bar\"}]'></modulor-dynamic-tag>`
     },
     {
       input: `
@@ -236,8 +235,8 @@ describe('replaceDynamicTags', () => {
         </{modulor_html_chunk:5}>
       `,
       expectation: `
-        <modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:0}" foo="{modulor_html_chunk:1}" {modulor_html_chunk:1}="{modulor_html_chunk:2}">
-          <modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:3}"            bla="test">
+        <modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:0}" attrs-data='[{\"name\":\"foo\",\"value\":\"{modulor_html_chunk:1}\"},{\"name\":\"{modulor_html_chunk:1}\",\"value\":\"{modulor_html_chunk:2}\"}]'>
+          <modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:3}" attrs-data='[{\"name\":\"bla\",\"value\":\"test\"}]'>
           </modulor-dynamic-tag>
         </modulor-dynamic-tag>
       `
@@ -251,8 +250,8 @@ describe('replaceDynamicTags', () => {
         </x-{modulor_html_chunk:5}-y>
       `,
       expectation: `
-        <modulor-dynamic-tag modulor-chunk="x-{modulor_html_chunk:0}-y" foo="{modulor_html_chunk:1}" {modulor_html_chunk:1}="{modulor_html_chunk:2}">
-          <modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:3}-foo"            bla="test">
+        <modulor-dynamic-tag modulor-chunk="x-{modulor_html_chunk:0}-y" attrs-data='[{"name":"foo","value":"{modulor_html_chunk:1}"},{"name":"{modulor_html_chunk:1}","value":"{modulor_html_chunk:2}"}]'>
+          <modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:3}-foo" attrs-data='[{\"name\":\"bla\",\"value\":\"test\"}]'>
           </modulor-dynamic-tag>
         </modulor-dynamic-tag>
       `
@@ -288,8 +287,8 @@ describe('replaceDynamicTags', () => {
         </span>
       `,
       expectation: `
-        <span id="component-b">
-          <modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:0}" foo={modulor_html_chunk:1}>
+        <span attrs-data='[{"name":"id","value":"component-b"}]'>
+          <modulor-dynamic-tag modulor-chunk="{modulor_html_chunk:0}" attrs-data='[{\"name\":\"foo\",\"value\":\"{modulor_html_chunk:1}\"}]'>
             <p>{modulor_html_chunk:2}</p>
           </modulor-dynamic-tag>
         </span>
@@ -300,7 +299,7 @@ describe('replaceDynamicTags', () => {
         <x-foo value={modulor_html_chunk:0}/>
       `,
       expectation: `
-        <x-foo value={modulor_html_chunk:0}></x-foo>
+        <x-foo attrs-data='[{\"name\":\"value\",\"value\":\"{modulor_html_chunk:0}\"}]'></x-foo>
       `
     },
   ]
@@ -311,30 +310,30 @@ describe('replaceDynamicTags', () => {
   })
 });
 
-describe('capitalize', () => {
+//describe('capitalize', () => {
 
-  const testSets = [
-    {
-      input: '<div fooBar="12" foo barBaz bla-Ok=234></div>',
-      expectation: '<div foo{modulor_capitalize:B}ar="12" foo bar{modulor_capitalize:B}az bla-{modulor_capitalize:O}k=234></div>'
-    },
-    {
-      input: `
-      <svg width="34" height="34" viewBox="0 0 34 34">
-        <path d="M29.1 26.3L23.8 22.8C22.7 22.1 21.2 22.4 20.5 23.5 19.3 25 17.8 27.5 12.2 21.8 6.6 16.2 9 14.7 10.5 13.5 11.5 12.7 11.8 11.3 11.1 10.2L7.6 4.9C7.2 4.2 6.6 3.1 5.1 3.3 3.7 3.5 0 5.6 0 10.2 0 14.8 3.6 20.4 8.5 25.4 13.5 30.3 19.1 34 23.8 34 28.4 34 30.5 29.9 30.7 28.9 30.9 27.9 29.8 26.8 29.1 26.3Z" fill="#6A3460" />
-      </svg>
-      `,
-      expectation: `
-      <svg width="34" height="34" view{modulor_capitalize:B}ox="0 0 34 34">
-        <path d="M29.1 26.3L23.8 22.8C22.7 22.1 21.2 22.4 20.5 23.5 19.3 25 17.8 27.5 12.2 21.8 6.6 16.2 9 14.7 10.5 13.5 11.5 12.7 11.8 11.3 11.1 10.2L7.6 4.9C7.2 4.2 6.6 3.1 5.1 3.3 3.7 3.5 0 5.6 0 10.2 0 14.8 3.6 20.4 8.5 25.4 13.5 30.3 19.1 34 23.8 34 28.4 34 30.5 29.9 30.7 28.9 30.9 27.9 29.8 26.8 29.1 26.3Z" fill="#6A3460"></path>
-      </svg>
-      `
-    },
-  ];
+  //const testSets = [
+    //{
+      //input: '<div fooBar="12" foo barBaz bla-Ok=234></div>',
+      //expectation: '<div foo{modulor_capitalize:B}ar="12" foo bar{modulor_capitalize:B}az bla-{modulor_capitalize:O}k=234></div>'
+    //},
+    //{
+      //input: `
+      //<svg width="34" height="34" viewBox="0 0 34 34">
+        //<path d="M29.1 26.3L23.8 22.8C22.7 22.1 21.2 22.4 20.5 23.5 19.3 25 17.8 27.5 12.2 21.8 6.6 16.2 9 14.7 10.5 13.5 11.5 12.7 11.8 11.3 11.1 10.2L7.6 4.9C7.2 4.2 6.6 3.1 5.1 3.3 3.7 3.5 0 5.6 0 10.2 0 14.8 3.6 20.4 8.5 25.4 13.5 30.3 19.1 34 23.8 34 28.4 34 30.5 29.9 30.7 28.9 30.9 27.9 29.8 26.8 29.1 26.3Z" fill="#6A3460" />
+      //</svg>
+      //`,
+      //expectation: `
+      //<svg width="34" height="34" view{modulor_capitalize:B}ox="0 0 34 34">
+        //<path d="M29.1 26.3L23.8 22.8C22.7 22.1 21.2 22.4 20.5 23.5 19.3 25 17.8 27.5 12.2 21.8 6.6 16.2 9 14.7 10.5 13.5 11.5 12.7 11.8 11.3 11.1 10.2L7.6 4.9C7.2 4.2 6.6 3.1 5.1 3.3 3.7 3.5 0 5.6 0 10.2 0 14.8 3.6 20.4 8.5 25.4 13.5 30.3 19.1 34 23.8 34 28.4 34 30.5 29.9 30.7 28.9 30.9 27.9 29.8 26.8 29.1 26.3Z" fill="#6A3460"></path>
+      //</svg>
+      //`
+    //},
+  //];
 
-  testSets.forEach((testSet, index) => {
-    it(`set #${index}`, () => {
-      expect(preprocess(testSet.input)).toBe(testSet.expectation);
-    });
-  })
-});
+  //testSets.forEach((testSet, index) => {
+    //it(`set #${index}`, () => {
+      //expect(preprocess(testSet.input)).toBe(testSet.expectation);
+    //});
+  //})
+//});

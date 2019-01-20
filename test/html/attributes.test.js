@@ -1,10 +1,10 @@
 import {
-  html, render, r, createHtml, copyAttributes, processNode, setPrefix, setPostfix, updateChunkRegexes, setCapitalisePrefix,
+  html, render, r, createHtml, copyAttributes, processNode, setPrefix, setPostfix, updateChunkRegexes, setDataAttributeName,
 } from '../../src/html';
 
 setPrefix('{modulor_html_chunk:');
 setPostfix('}');
-setCapitalisePrefix('{modulor_capitalize:');
+setDataAttributeName('attrs-data');
 
 updateChunkRegexes();
 
@@ -16,19 +16,58 @@ describe('copy attributes', () => {
 
   const element = document.createElement('div');
   element.innerHTML = `
-    <input type="checkbox"
-           id="some-id"
-           foo="{modulor_html_chunk:0}"
-           {modulor_html_chunk:1}="ok"
-           {modulor_html_chunk:2}
-           {modulor_html_chunk:3}="{modulor_html_chunk:4}"
-           autofocus="{modulor_html_chunk:5}"
-           test-data="{modulor_html_chunk:6}"
-           {modulor_html_chunk:7}
-           {modulor_html_chunk:8}="bla"
-           {modulor_html_chunk:9}="{modulor_html_chunk:10}"
-           baz="{modulor_html_chunk:11}"
-           attr-{modulor_html_chunk:12}="test"/>
+    <input attrs-data='${JSON.stringify([
+        {
+          "name": "type",
+          "value": "checkbox"
+        },
+        {
+          "name": "id",
+          "value": "some-id"
+        },
+        {
+          "name": "foo",
+          "value": "{modulor_html_chunk:0}"
+        },
+        {
+          "name": "{modulor_html_chunk:1}",
+          "value": "ok"
+        },
+        {
+          "name": "{modulor_html_chunk:2}"
+        },
+        {
+          "name": "{modulor_html_chunk:3}",
+          "value": "{modulor_html_chunk:4}"
+        },
+        {
+          "name": "autofocus",
+          "value": "{modulor_html_chunk:5}"
+        },
+        {
+          "name": "test-data",
+          "value": "{modulor_html_chunk:6}"
+        },
+        {
+          "name": "{modulor_html_chunk:7}"
+        },
+        {
+          "name": "{modulor_html_chunk:8}",
+          "value": "bla"
+        },
+        {
+          "name": "{modulor_html_chunk:9}",
+          "value": "{modulor_html_chunk:10}"
+        },
+        {
+          "name": "baz",
+          "value": "{modulor_html_chunk:11}"
+        },
+        {
+          "name": "attr-{modulor_html_chunk:12}",
+          "value": "test"
+        }
+    ])}'/>
   `;
 
   const source = processNode(element.querySelector('input'));
@@ -79,12 +118,12 @@ describe('copy attributes', () => {
   });
 
   it('handles attributes where value is not required', () => {
-    expect(target.getAttribute('checked')).toBe('');
+    expect(target.getAttribute('checked')).toBe('true');
     expect(target.checked).toBe(true);
   });
 
   it('handles attributes as functions', () => {
-    expect(spyNoValue).toHaveBeenCalledWith(target, '');
+    expect(spyNoValue).toHaveBeenCalledWith(target, true);
     expect(spyWithValue).toHaveBeenCalledWith(target, 'bla');
     expect(spyWithDynamicValue).toHaveBeenCalledWith(target, data[10]);
   });
@@ -119,7 +158,6 @@ describe('copy attributes', () => {
       'quux',
     ];
 
-    const updates = copyAttributes(target, source);
     updates.forEach(u => u(newData, data));
 
     expect(target.getAttribute('checked')).toBe(null);
@@ -134,7 +172,9 @@ describe('copy attributes', () => {
   it('copies style attribute correctly', () => {
     const element = document.createElement('div');
     element.innerHTML = `
-      <input style="display: {modulor_html_chunk:0};"/>
+      <input attrs-data='${JSON.stringify([
+        { name: "style", value: "display: {modulor_html_chunk:0};" }
+      ])}'/>
     `;
 
     const source = processNode(element.querySelector('input'));
@@ -157,7 +197,9 @@ describe('copy attributes', () => {
   it('copies style attribute as object correctly', () => {
     const element = document.createElement('div');
     element.innerHTML = `
-      <input style="{modulor_html_chunk:0}"/>
+      <input attrs-data='${JSON.stringify([
+        { name: "style", value: "{modulor_html_chunk:0}" }
+      ])}'/>
     `;
 
     const source = processNode(element.querySelector('input'));
@@ -176,27 +218,6 @@ describe('copy attributes', () => {
 
     expect(target.getAttribute('style')).toBe('display: block; margin-right: 0px;');
   });
-
-  it('capitalises attribute names correctly', () => {
-    const element = document.createElement('div');
-    element.innerHTML = `
-      <input
-        foo{modulor_capitalize:B}ar="12"
-        foo
-        bar{modulor_capitalize:B}az
-        bla-{modulor_capitalize:O}k=234
-        one{modulor_capitalize:t}wo{modulor_capitalize:F}our=2 />
-    `;
-
-    const source = processNode(element.querySelector('input'));
-    expect(source.attributes).toMatchObject([
-      { name: 'fooBar', value: '12', isBoolean: false },
-      { name: 'foo', value: '', isBoolean: false },
-      { name: 'barBaz', value: '', isBoolean: false },
-      { name: 'bla-Ok', value: '234', isBoolean: false },
-      { name: 'oneTwoFour', value: '2', isBoolean: false },
-    ]);
-  });
 });
 
 describe('classes', () => {
@@ -204,18 +225,18 @@ describe('classes', () => {
     const container = document.createElement('div');
 
     const tpl = (scope) => html`
-      <div ref="inner" class="foo ${scope.a} ${scope.b}-bar baz-${scope.c}"></div>
+      <div class="foo ${scope.a} ${scope.b}-bar baz-${scope.c}" ref="inner"></div>
     `;
 
     const data1 = { a: 1, b: 2, c: 3, d: 4 };
-    const snapshot1 = `<div ref="inner" class="foo ${data1.a} ${data1.b}-bar baz-${data1.c}"></div>
+    const snapshot1 = `<div class="foo ${data1.a} ${data1.b}-bar baz-${data1.c}" ref="inner"></div>
     `;
 
     render(tpl(data1), container);
     expect(container.innerHTML).toBe(snapshot1);
 
     const data2 = { a: 3, b: 5, c: 7, d: 9 };
-    const snapshot2 = `<div ref="inner" class="foo ${data2.a} ${data2.b}-bar baz-${data2.c}"></div>
+    const snapshot2 = `<div class="foo ${data2.a} ${data2.b}-bar baz-${data2.c}" ref="inner"></div>
     `;
 
     render(tpl(data2), container);
@@ -223,7 +244,7 @@ describe('classes', () => {
 
     container.querySelector('[ref="inner"]').classList.add('manually-added');
     const data3 = { a: 8, b: 3, c: 9, d: 2 };
-    const snapshot3 = `<div ref="inner" class="foo manually-added ${data3.a} ${data3.b}-bar baz-${data3.c}"></div>
+    const snapshot3 = `<div class="foo manually-added ${data3.a} ${data3.b}-bar baz-${data3.c}" ref="inner"></div>
     `;
 
     render(tpl(data3), container);
@@ -421,6 +442,101 @@ describe('boolean attrs and value', () => {
 
     render(tpl({ checked: 'true' }), container);
     expect(container.querySelector('input').checked).toBe(true);
+  });
+});
+
+describe('name as object', () => {
+  it('basic', () => {
+    const container = document.createElement('div');
+
+    const tpl = (attrs) => html`
+      <input ${attrs} />
+    `;
+
+    render(tpl({ disabled: true, checked: true, test: 'ok' }), container);
+    expect(container.querySelector('input').disabled).toBe(true);
+    expect(container.querySelector('input').checked).toBe(true);
+    expect(container.querySelector('input').getAttribute('test')).toBe('ok');
+
+    render(tpl({ checked: false }), container);
+    expect(container.querySelector('input').disabled).toBe(false);
+    expect(container.querySelector('input').checked).toBe(false);
+    expect(container.querySelector('input').getAttribute('test')).toBe(null);
+
+    render(tpl({ checked: 'true' }), container);
+    expect(container.querySelector('input').checked).toBe(true);
+  });
+
+  it('multiple objects', () => {
+    const container = document.createElement('div');
+
+    const tpl = (attrs1, attrs2) => html`
+      <input ${attrs1} ${attrs2} />
+    `;
+
+    render(tpl({ foo: 'bar' }, { baz: 'bla' }), container);
+    expect(container.querySelector('input').getAttribute('foo')).toBe('bar');
+    expect(container.querySelector('input').getAttribute('baz')).toBe('bla');
+
+    render(tpl({ bar: 'foo' }, { baz: 'bla' }), container);
+    expect(container.querySelector('input').getAttribute('foo')).toBe(null);
+    expect(container.querySelector('input').getAttribute('bar')).toBe('foo');
+    expect(container.querySelector('input').getAttribute('baz')).toBe('bla');
+
+    render(tpl({ bar: 'foo', test: 'ok' }, { bar: 'bla' }), container);
+    expect(container.querySelector('input').getAttribute('foo')).toBe(null);
+    expect(container.querySelector('input').getAttribute('bar')).toBe('bla');
+    expect(container.querySelector('input').getAttribute('test')).toBe('ok');
+    expect(container.querySelector('input').getAttribute('baz')).toBe(null);
+
+    render(tpl({ bar: 'foo' }), container);
+    expect(container.querySelector('input').getAttribute('foo')).toBe(null);
+    expect(container.querySelector('input').getAttribute('bar')).toBe('foo');
+    expect(container.querySelector('input').getAttribute('test')).toBe(null);
+    expect(container.querySelector('input').getAttribute('baz')).toBe(null);
+  });
+
+  it('with static attributes', () => {
+    const container = document.createElement('div');
+
+    const tpl = (attrs, attrs2) => html`
+      <input ${attrs} quux="foo" ${attrs2} />
+    `;
+
+    render(tpl({ foo: 'bar' }), container);
+    expect(container.querySelector('input').getAttribute('foo')).toBe('bar');
+    expect(container.querySelector('input').getAttribute('quux')).toBe('foo');
+
+    render(tpl({ bla: 'bazz' }), container);
+    expect(container.querySelector('input').getAttribute('bla')).toBe('bazz');
+    expect(container.querySelector('input').getAttribute('foo')).toBe(null);
+    expect(container.querySelector('input').getAttribute('quux')).toBe('foo');
+
+    render(tpl({ quux: 'new' }), container);
+    expect(container.querySelector('input').getAttribute('bla')).toBe(null);
+    expect(container.querySelector('input').getAttribute('foo')).toBe(null);
+    expect(container.querySelector('input').getAttribute('quux')).toBe('foo');
+
+    render(tpl({ barr: 'ok' }), container);
+    expect(container.querySelector('input').getAttribute('barr')).toBe('ok');
+    expect(container.querySelector('input').getAttribute('bla')).toBe(null);
+    expect(container.querySelector('input').getAttribute('foo')).toBe(null);
+    expect(container.querySelector('input').getAttribute('quux')).toBe('foo');
+
+    render(tpl({}, { quux: 'new' }), container);
+    expect(container.querySelector('input').getAttribute('bla')).toBe(null);
+    expect(container.querySelector('input').getAttribute('foo')).toBe(null);
+    expect(container.querySelector('input').getAttribute('quux')).toBe('new');
+
+    render(tpl({}, {}), container);
+    expect(container.querySelector('input').getAttribute('bla')).toBe(null);
+    expect(container.querySelector('input').getAttribute('foo')).toBe(null);
+    expect(container.querySelector('input').getAttribute('quux')).toBe('foo');
+
+    render(tpl({ test: 1 }, { test: 2 }), container);
+    expect(container.querySelector('input').getAttribute('quux')).toBe('foo');
+    expect(container.querySelector('input').getAttribute('test')).toBe('2');
+
   });
 });
 
