@@ -1,24 +1,3 @@
-import { TEXT_NODE } from './constants';
-
-export function emptyNode(node){
-  while (node.firstChild) {
-    node.removeChild(node.firstChild);
-  }
-}
-
-export function same(nodeA, nodeB){
-  if(nodeA.nodeType !== nodeB.nodeType){
-    return false;
-  }
-  return nodeA.tagName && nodeB.tagName &&
-         nodeA.tagName.toLowerCase() === nodeB.tagName.toLowerCase();
-};
-
-export function isSameTextNode(nodeA, nodeB){
-  return TEXT_NODE === nodeA.nodeType === nodeA.nodeType &&
-         nodeA.textContent === nodeB.textContent;
-};
-
 export function isDefined(value){
   return typeof value !== 'undefined';
 }
@@ -39,6 +18,21 @@ export function isBoolean(value){
   return typeof value === typeof true;
 }
 
+export function isString(value){
+  return typeof value === 'string';
+}
+
+export function proxyPromise(fn){
+  return function proxy(name, value){
+    //@TODO implement via Promise.all with polyfill
+    return isPromise(name)
+      ? name.then((newName) => proxy(newName, value))
+      : isPromise(value)
+        ? value.then(newValue => proxy(name, newValue))
+        : fn(name, value);
+  }
+}
+
 //hash function taken from https://github.com/darkskyapp/string-hash/blob/master/index.js
 export function hash(str) {
   var hash = 5381,
@@ -47,10 +41,6 @@ export function hash(str) {
     hash = (hash * 33) ^ str.charCodeAt(--i);
   }
   return hash >>> 0;
-};
-
-export function regExpEscape(literalString){
-  return literalString.replace(/[-[\]{}()*+!<=:?.\/\\^$|#\s,]/g, '\\$&');
 };
 
 export function noop(){}

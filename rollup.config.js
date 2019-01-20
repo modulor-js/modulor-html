@@ -1,15 +1,9 @@
-import uglify from 'rollup-plugin-uglify';
+import { uglify } from 'rollup-plugin-uglify';
 import babel from 'rollup-plugin-babel';
 
 const plugins = [
-  babel({
-    babelrc: false,
-    presets: [
-      ['es2015', { modules: false }],
-    ],
-    plugins: ['transform-node-env-inline']
-  }),
-  uglify()
+  babel(),
+  uglify(),
 ];
 
 export default [{
@@ -24,6 +18,13 @@ export default [{
   input: 'src/directives.js',
   output: {
     file: 'build/directives.js',
+    format: 'cjs',
+  },
+  plugins
+}, {
+  input: 'src/element.js',
+  output: {
+    file: 'build/element.js',
     format: 'cjs',
   },
   plugins
