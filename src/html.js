@@ -200,6 +200,7 @@ function processNode($container){
           const preparedPrevValue = matchValue ? prevValues[matchValue[2]] : replaceTokens(value, prevValues);
 
           const prop = { key: preparedName, value: preparedValue };
+
           if(preparedName === preparedPrevName && preparedValue === preparedPrevValue){
             return [prop, false];
           }
@@ -212,7 +213,6 @@ function processNode($container){
             return [prop, true];
           }
 
-          prop[preparedName] = preparedValue;
           applyAttribute(target, { name: preparedName, value: preparedValue }, isBoolean($container[preparedName]));
           return [prop, true];
         };
@@ -481,8 +481,11 @@ function copyAttributes(target, source, interceptChildrenRendering){
     if(updates.length){
       return [(values, prevValues) => {
         const [newProps, updated] = updates.reduce(([props, accUpdated], u) => {
-          const [{ key, value }, updated] = u(values, prevValues);
-          const prop = (typeof key === 'string' || typeof key === 'number') ? { [key]: value } : {};
+          const [updatedProps, updated] = u(values, prevValues);
+          const prop = [].concat(updatedProps).reduce((acc, { key, value }) => {
+            const prop = (typeof key === 'string' || typeof key === 'number') ? { [key]: value } : {};
+            return Object.assign({}, acc, prop);
+          }, {});
           return [Object.assign({}, props, prop), accUpdated || updated];
         }, [props, false]);
         setProps(newProps, updated);
