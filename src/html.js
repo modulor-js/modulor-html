@@ -150,6 +150,7 @@ function processNode($container){
   const { attributes, childNodes } = nodeCopy;
 
   const childAttributes = $container.attributes || [];
+  const dynamicTags = [];
   for(let j = 0; j < childAttributes.length; j++){
     const value = childAttributes[j].value;
     const name = childAttributes[j].name.replace(capitaliseRegex, (_, letter) => {
@@ -190,38 +191,52 @@ function processNode($container){
       continue;
     }
 
+
     if(nameIsDynamic || valueIsDynamic){
-      attributes.push((target) => {
-        return function update(values, prevValues){
-          const preparedName = matchName ? values[matchName[2]] : replaceTokens(name, values);
-          const preparedPrevName = matchName ? prevValues[matchName[2]] : replaceTokens(name, prevValues);
-
-          const preparedValue = matchValue ? values[matchValue[2]] : replaceTokens(value, values);
-          const preparedPrevValue = matchValue ? prevValues[matchValue[2]] : replaceTokens(value, prevValues);
-
-          const prop = { key: preparedName, value: preparedValue };
-
-          if(preparedName === preparedPrevName && preparedValue === preparedPrevValue){
-            return [prop, false];
-          }
-
-          if(preparedName !== preparedPrevName){
-            target.removeAttribute(preparedPrevName);
-          }
-
-          if(!preparedName){
-            return [prop, true];
-          }
-
-          applyAttribute(target, { name: preparedName, value: preparedValue }, isBoolean($container[preparedName]));
-          return [prop, true];
-        };
-
-      });
+      dynamicTags.push({ name, value, matchName, matchValue });
     } else {
       attributes.push({ name, value, isBoolean: isBoolean($container[name]) });
     }
   }
+
+  dynamicTags.length && attributes.push((target) => {
+    return function update(values, prevValues){
+
+      const attrs = dynamicTags.reduce((acc, { name, value, matchName, matchValue }) => {
+
+        const preparedName = matchName ? values[matchName[2]] : replaceTokens(name, values);
+        const preparedPrevName = matchName ? prevValues[matchName[2]] : replaceTokens(name, prevValues);
+
+        const preparedValue = matchValue ? values[matchValue[2]] : replaceTokens(value, values);
+        const preparedPrevValue = matchValue ? prevValues[matchValue[2]] : replaceTokens(value, prevValues);
+
+        const attr = {
+          name: preparedName,
+          value: preparedValue,
+          prevName: preparedPrevName,
+          prevValue: preparedPrevValue,
+          nameUpdated: preparedName !== preparedPrevName,
+          valueUpdated: preparedValue !== preparedPrevValue,
+        };
+
+        return acc.concat(attr);
+
+      }, []);
+
+      const result = attrs.reduce(([acc, updated], { name, value, prevName, prevValue, nameUpdated, valueUpdated, removeAttribute }) => {
+        if(nameUpdated){
+          target.removeAttribute(prevName);
+        }
+        if(name && (nameUpdated || valueUpdated)){
+          applyAttribute(target, { name, value }, isBoolean($container[name]));
+        }
+        return [acc.concat({ key: name, value }), updated || nameUpdated || valueUpdated];
+      }, [[], false]);
+
+      return result;
+
+    };
+  });
 
   const containerChildNodes = $container.childNodes || [];
   for(let i = 0; i < containerChildNodes.length; i++){
