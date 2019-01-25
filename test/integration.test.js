@@ -548,6 +548,32 @@ describe('component props', () => {
 
   });
 
+  it('camelCase attribute names', () => {
+
+    const valueSetterSpyA = jest.fn();
+    const valueSetterSpyB = jest.fn();
+
+    customElements.define('my-test-component-j', class extends HTMLElement {
+      set myValue(value){
+        valueSetterSpyA(value);
+      }
+      set ['my-Test-Value'](value){
+        valueSetterSpyB(value);
+      }
+    });
+
+    const tplF = (scope) => html`
+      <my-test-component-j myValue="test" my-Test-Value="foo"></my-test-component-j>
+    `;
+
+    const container = document.createElement('div');
+
+    render(tplF(), container);
+    expect(valueSetterSpyA).toHaveBeenCalledWith('test');
+    expect(valueSetterSpyB).toHaveBeenCalledWith('foo');
+  });
+
+
 });
 
 describe('directives', () => {
