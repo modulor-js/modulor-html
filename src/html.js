@@ -19,6 +19,7 @@ let PREFIX = `{modulor_html_chunk_${+new Date()}:`;
 let POSTFIX = '}';
 
 const PREPROCESS_TEMPLATE_REGEX = /<([/]?)([^ />]+)((?:\s+[\w}{:-]+(?:([\s])*=\s*(?:(?:"[^"]*")|(?:'[^']*')|[^>\s]+))?)*)\s*(\/?)[ ]*>/igm;
+const PREPROCESS_ATTR_REGEX = /([-A-Za-z0-9_}{:]+)(?:\s*=\s*(?:(?:"((?:\\.|[^"])*)")|(?:'((?:\\.|[^'])*)')|([^>\s]+)))?/gim;
 
 const sanitizeTags = ['table', 'tr', 'td', 'style'];
 
@@ -337,11 +338,12 @@ function preprocess(str){
   return str.replace(PREPROCESS_TEMPLATE_REGEX, (input, isClosing, tagName, attrs, _, isSelfClosing) => {
 
     //TODO: make this workaround a part of regex, test case: test/html/processing.test.js:300
+
     attrs = attrs.replace(/\/$/, () => {
       isSelfClosing = '/';
       return '';
-    }).replace(/(?:[ ]|^)([^ ="'/]+)(?=[= ]|$)/igm, (attrName) => {
-      return attrName.replace(/[A-Z]/gm, letter => `${capitalisePrefix}${letter}${POSTFIX}`);
+    }).replace(PREPROCESS_ATTR_REGEX, (attrBlock, attrName) => {
+      return attrBlock.replace(attrName, attrName.replace(/[A-Z]/gm, letter => `${capitalisePrefix}${letter}${POSTFIX}`));
     });
 
     if(~sanitizeTags.indexOf(tagName) || tagName.match(findChunksRegex)){

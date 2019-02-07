@@ -1,6 +1,6 @@
 {
   "name": "@modulor-js/html",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Template engine based on tagged template literals",
   "main": "index.js",
   "directories": {

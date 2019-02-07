@@ -318,6 +318,18 @@ describe('capitalize', () => {
       input: '<div fooBar="12" foo barBaz bla-Ok=234></div>',
       expectation: '<div foo{modulor_capitalize:B}ar="12" foo bar{modulor_capitalize:B}az bla-{modulor_capitalize:O}k=234></div>'
     },
+    {
+      input: `
+      <svg width="34" height="34" viewBox="0 0 34 34">
+        <path d="M29.1 26.3L23.8 22.8C22.7 22.1 21.2 22.4 20.5 23.5 19.3 25 17.8 27.5 12.2 21.8 6.6 16.2 9 14.7 10.5 13.5 11.5 12.7 11.8 11.3 11.1 10.2L7.6 4.9C7.2 4.2 6.6 3.1 5.1 3.3 3.7 3.5 0 5.6 0 10.2 0 14.8 3.6 20.4 8.5 25.4 13.5 30.3 19.1 34 23.8 34 28.4 34 30.5 29.9 30.7 28.9 30.9 27.9 29.8 26.8 29.1 26.3Z" fill="#6A3460" />
+      </svg>
+      `,
+      expectation: `
+      <svg width="34" height="34" view{modulor_capitalize:B}ox="0 0 34 34">
+        <path d="M29.1 26.3L23.8 22.8C22.7 22.1 21.2 22.4 20.5 23.5 19.3 25 17.8 27.5 12.2 21.8 6.6 16.2 9 14.7 10.5 13.5 11.5 12.7 11.8 11.3 11.1 10.2L7.6 4.9C7.2 4.2 6.6 3.1 5.1 3.3 3.7 3.5 0 5.6 0 10.2 0 14.8 3.6 20.4 8.5 25.4 13.5 30.3 19.1 34 23.8 34 28.4 34 30.5 29.9 30.7 28.9 30.9 27.9 29.8 26.8 29.1 26.3Z" fill="#6A3460"></path>
+      </svg>
+      `
+    },
   ];
 
   testSets.forEach((testSet, index) => {
