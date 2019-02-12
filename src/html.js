@@ -207,12 +207,13 @@ function processNode($container){
           [name]: {
             name,
             value,
-            isUpdated: false
+            isUpdated: false,
+            toDelete: true,
           }
         });
       }, {});
       return function update(values, prevValues){
-        return dynamicAttrsList.reduce(([acc, updated], { name, value, nameIsDynamic, valueIsDynamic, matchName, matchValue }) => {
+        const foo = dynamicAttrsList.reduce(([acc, updated], { name, value, nameIsDynamic, valueIsDynamic, matchName, matchValue }) => {
           const preparedName = matchName ? values[matchName[2]] : replaceTokens(name, values);
           const preparedPrevName = matchName ? prevValues[matchName[2]] : replaceTokens(name, prevValues);
 
@@ -225,8 +226,18 @@ function processNode($container){
             return [acc.concat(prop), updated || false];
           }
 
+          values[name] = Object.assign({}, values[name], {
+            name: preparedName,
+            prevName: preparedPrevName,
+            value: preparedValue,
+            prevValue: preparedPrevValue,
+            isUpdated: true,
+          });
+
           if(preparedName !== preparedPrevName){
-            target.removeAttribute(preparedPrevName);
+            Object.assign(values[name], {
+              toDelete: true
+            });
           }
 
           if(!preparedName){
@@ -236,6 +247,15 @@ function processNode($container){
           applyAttribute(target, { name: preparedName, value: preparedValue }, isBoolean($container[preparedName]));
           return [acc.concat(prop), true];
         }, [[], false]);
+
+        Object.keys(values).forEach((key) => {
+          const val = values[key];
+          if(val && val.toDelete){
+            target.removeAttribute(val.prevName);
+          }
+        });
+
+        return foo;
       };
     });
   }
