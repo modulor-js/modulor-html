@@ -150,6 +150,9 @@ function processNode($container){
   const { attributes, childNodes } = nodeCopy;
 
   const childAttributes = $container.attributes || [];
+
+  const dynamicAttrsList = [];
+
   for(let j = 0; j < childAttributes.length; j++){
     const value = childAttributes[j].value;
     const name = childAttributes[j].name.replace(capitaliseRegex, (_, letter) => {
@@ -191,8 +194,25 @@ function processNode($container){
     }
 
     if(nameIsDynamic || valueIsDynamic){
-      attributes.push((target) => {
-        return function update(values, prevValues){
+      dynamicAttrsList.push({ name, value, nameIsDynamic, valueIsDynamic, matchName, matchValue });
+    } else {
+      attributes.push({ name, value, isBoolean: isBoolean($container[name]) });
+    }
+  }
+
+  if(dynamicAttrsList.length){
+    attributes.push((target) => {
+      const values = attributes.reduce((acc, { name, value }) => {
+        return Object.assign(acc, {
+          [name]: {
+            name,
+            value,
+            isUpdated: false
+          }
+        });
+      }, {});
+      return function update(values, prevValues){
+        return dynamicAttrsList.reduce(([acc, updated], { name, value, nameIsDynamic, valueIsDynamic, matchName, matchValue }) => {
           const preparedName = matchName ? values[matchName[2]] : replaceTokens(name, values);
           const preparedPrevName = matchName ? prevValues[matchName[2]] : replaceTokens(name, prevValues);
 
@@ -202,7 +222,7 @@ function processNode($container){
           const prop = { key: preparedName, value: preparedValue };
 
           if(preparedName === preparedPrevName && preparedValue === preparedPrevValue){
-            return [prop, false];
+            return [acc.concat(prop), updated || false];
           }
 
           if(preparedName !== preparedPrevName){
@@ -210,17 +230,14 @@ function processNode($container){
           }
 
           if(!preparedName){
-            return [prop, true];
+            return [acc.concat(prop), true];
           }
 
           applyAttribute(target, { name: preparedName, value: preparedValue }, isBoolean($container[preparedName]));
-          return [prop, true];
-        };
-
-      });
-    } else {
-      attributes.push({ name, value, isBoolean: isBoolean($container[name]) });
-    }
+          return [acc.concat(prop), true];
+        }, [[], false]);
+      };
+    });
   }
 
   const containerChildNodes = $container.childNodes || [];
