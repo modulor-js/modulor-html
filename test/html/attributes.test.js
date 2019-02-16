@@ -119,7 +119,6 @@ describe('copy attributes', () => {
       'quux',
     ];
 
-    const updates = copyAttributes(target, source);
     updates.forEach(u => u(newData, data));
 
     expect(target.getAttribute('checked')).toBe(null);

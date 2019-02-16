@@ -194,7 +194,7 @@ function processNode($container){
     }
 
     if(nameIsDynamic || valueIsDynamic){
-      dynamicAttrsList.push({ name, value, nameIsDynamic, valueIsDynamic, matchName, matchValue });
+      dynamicAttrsList.push({ name, value, matchName, matchValue });
     } else {
       attributes.push({ name, value, isBoolean: isBoolean($container[name]) });
     }
@@ -202,17 +202,10 @@ function processNode($container){
 
   if(dynamicAttrsList.length){
     attributes.push((target) => {
-      const values = attributes.reduce((acc, { name, value }) => {
-        return Object.assign(acc, {
-          [name]: {
-            name,
-            value,
-            isUpdated: false
-          }
-        });
-      }, {});
+      let vals = {};
       return function update(values, prevValues){
-        return dynamicAttrsList.reduce(([acc, updated], { name, value, nameIsDynamic, valueIsDynamic, matchName, matchValue }) => {
+        const newVals = {};
+        const foo = dynamicAttrsList.reduce(([acc, updated], { name, value, matchName, matchValue }) => {
           const preparedName = matchName ? values[matchName[2]] : replaceTokens(name, values);
           const preparedPrevName = matchName ? prevValues[matchName[2]] : replaceTokens(name, prevValues);
 
@@ -221,21 +214,24 @@ function processNode($container){
 
           const prop = { key: preparedName, value: preparedValue };
 
+          if(getChunkType(preparedName) === CHUNK_TYPE_TEXT){
+            newVals[preparedName] = preparedValue;
+          }
+
           if(preparedName === preparedPrevName && preparedValue === preparedPrevValue){
             return [acc.concat(prop), updated || false];
           }
 
-          if(preparedName !== preparedPrevName){
-            target.removeAttribute(preparedPrevName);
-          }
-
           if(!preparedName){
-            return [acc.concat(prop), true];
+            return [acc, true];
           }
 
           applyAttribute(target, { name: preparedName, value: preparedValue }, isBoolean($container[preparedName]));
           return [acc.concat(prop), true];
         }, [[], false]);
+        Object.keys(vals).forEach(key => !(key in newVals) && target.removeAttribute(key));
+        vals = newVals;
+        return foo;
       };
     });
   }
