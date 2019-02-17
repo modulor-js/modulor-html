@@ -213,21 +213,23 @@ function processNode($container){
           const preparedValue = matchValue ? values[matchValue[2]] : replaceTokens(value, values);
           const preparedPrevValue = matchValue ? prevValues[matchValue[2]] : replaceTokens(value, prevValues);
 
+          const chunkUpdated = (preparedName !== preparedPrevName) || (preparedValue !== preparedPrevValue);
+          chunkUpdated && (updated = true);
+
           if(!preparedName){
-            updated = updated || (preparedName !== preparedPrevName);
             continue;
           }
 
           if(typeof preparedName === 'string'){
             newVals[preparedName] = preparedValue;
+          } else if(isObject(preparedName)){
           }
 
-          if(preparedName === preparedPrevName && preparedValue === preparedPrevValue){
+          if(!chunkUpdated){
             continue;
           }
 
           applyAttribute(target, { name: preparedName, value: preparedValue }, isBoolean($container[preparedName]));
-          updated = true;
         }
         Object.keys(vals).forEach(key => !(key in newVals) && target.removeAttribute(key));
         vals = newVals;
