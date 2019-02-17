@@ -187,7 +187,7 @@ function processNode($container){
             }
             return acc;
           }, false);
-          return [{ key: 'className', value: target.className }, updated];
+          return [{ className: target.className }, updated];
         };
       });
       continue;
@@ -205,7 +205,7 @@ function processNode($container){
       let vals = {};
       return function update(values, prevValues){
         const newVals = {};
-        const result = [[], false];
+        let updated = false;
         for(let { name, value, matchName, matchValue } of dynamicAttrsList){
           const preparedName = matchName ? values[matchName[2]] : replaceTokens(name, values);
           const preparedPrevName = matchName ? prevValues[matchName[2]] : replaceTokens(name, prevValues);
@@ -213,29 +213,25 @@ function processNode($container){
           const preparedValue = matchValue ? values[matchValue[2]] : replaceTokens(value, values);
           const preparedPrevValue = matchValue ? prevValues[matchValue[2]] : replaceTokens(value, prevValues);
 
-          const prop = { key: preparedName, value: preparedValue };
-
-          if(getChunkType(preparedName) === CHUNK_TYPE_TEXT){
+          if(typeof preparedName === 'string'){
             newVals[preparedName] = preparedValue;
           }
 
           if(preparedName === preparedPrevName && preparedValue === preparedPrevValue){
-            result[0].push(prop);
             continue;
           }
 
           if(!preparedName){
-            result[1] = true;
+            updated = true;
             continue;
           }
 
           applyAttribute(target, { name: preparedName, value: preparedValue }, isBoolean($container[preparedName]));
-          result[0].push(prop);
-          result[1] = true;
+          updated = true;
         }
         Object.keys(vals).forEach(key => !(key in newVals) && target.removeAttribute(key));
         vals = newVals;
-        return result;
+        return [newVals, updated];
       };
     });
   }
@@ -487,7 +483,7 @@ function copyAttributes(target, source, interceptChildrenRendering){
         initialRender();
         return newUpdate;
       };
-      return [{ key: 'children', value: children }, true];
+      return [{ children }, true];
     });
   }
 
@@ -499,11 +495,7 @@ function copyAttributes(target, source, interceptChildrenRendering){
       return [(values, prevValues) => {
         const [newProps, updated] = updates.reduce(([props, accUpdated], u) => {
           const [updatedProps, updated] = u(values, prevValues);
-          const prop = [].concat(updatedProps).reduce((acc, { key, value }) => {
-            const prop = (typeof key === 'string' || typeof key === 'number') ? { [key]: value } : {};
-            return Object.assign({}, acc, prop);
-          }, {});
-          return [Object.assign({}, props, prop), accUpdated || updated];
+          return [Object.assign({}, props, updatedProps), accUpdated || updated];
         }, [props, false]);
         setProps(newProps, updated);
       }];
