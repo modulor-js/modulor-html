@@ -221,7 +221,6 @@ function processNode($container){
 
           if(preparedName === preparedPrevName && preparedValue === preparedPrevValue){
             result[0].push(prop);
-            result[1] = result[1] || false;
             continue;
           }
 
