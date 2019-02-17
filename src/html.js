@@ -220,18 +220,29 @@ function processNode($container){
             continue;
           }
 
+          const attrs = [];
+          const prop = { name: preparedName, value: preparedValue };
+
           if(typeof preparedName === 'string'){
             newVals[preparedName] = preparedValue;
+            attrs.push(prop);
           } else if(isObject(preparedName)){
+          } else {
+            attrs.push(prop);
           }
 
           if(!chunkUpdated){
             continue;
           }
 
-          applyAttribute(target, { name: preparedName, value: preparedValue }, isBoolean($container[preparedName]));
+          for(let attr of attrs){
+            applyAttribute(target, attr, isBoolean($container[attr.name]));
+          }
+
         }
-        Object.keys(vals).forEach(key => !(key in newVals) && target.removeAttribute(key));
+        for(let key in vals){
+          !(key in newVals) && target.removeAttribute(key);
+        }
         vals = newVals;
         return [newVals, updated];
       };
