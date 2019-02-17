@@ -423,3 +423,26 @@ describe('boolean attrs and value', () => {
   });
 });
 
+describe('name as object', () => {
+  it('updates attrs correctly', () => {
+    const container = document.createElement('div');
+
+    const tpl = (attrs) => html`
+      <input ${attrs} />
+    `;
+
+    render(tpl({ disabled: true, checked: true, test: 'ok' }), container);
+    expect(container.querySelector('input').disabled).toBe(true);
+    expect(container.querySelector('input').checked).toBe(true);
+    expect(container.querySelector('input').getAttribute('test')).toBe('ok');
+
+    render(tpl({ checked: false }), container);
+    expect(container.querySelector('input').disabled).toBe(false);
+    expect(container.querySelector('input').checked).toBe(false);
+    expect(container.querySelector('input').getAttribute('test')).toBe(null);
+
+    render(tpl({ checked: 'true' }), container);
+    expect(container.querySelector('input').checked).toBe(true);
+  });
+});
+

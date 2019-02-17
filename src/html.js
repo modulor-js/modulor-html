@@ -203,6 +203,7 @@ function processNode($container){
   if(dynamicAttrsList.length){
     attributes.push((target) => {
       let vals = {};
+      let preparedPrevName, preparedPrevValue;
       return function update(values, prevValues){
         const newVals = {};
         let updated = false;
@@ -227,6 +228,11 @@ function processNode($container){
             newVals[preparedName] = preparedValue;
             attrs.push(prop);
           } else if(isObject(preparedName)){
+            for(let key in preparedName){
+              const val = preparedName[key];
+              newVals[key] = preparedValue;
+              attrs.push({ name: key, value: val });
+            }
           } else {
             attrs.push(prop);
           }
