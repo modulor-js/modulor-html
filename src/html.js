@@ -205,7 +205,8 @@ function processNode($container){
       let vals = {};
       return function update(values, prevValues){
         const newVals = {};
-        const foo = dynamicAttrsList.reduce(([acc, updated], { name, value, matchName, matchValue }) => {
+        const result = [[], false];
+        for(let { name, value, matchName, matchValue } of dynamicAttrsList){
           const preparedName = matchName ? values[matchName[2]] : replaceTokens(name, values);
           const preparedPrevName = matchName ? prevValues[matchName[2]] : replaceTokens(name, prevValues);
 
@@ -219,19 +220,23 @@ function processNode($container){
           }
 
           if(preparedName === preparedPrevName && preparedValue === preparedPrevValue){
-            return [acc.concat(prop), updated || false];
+            result[0].push(prop);
+            result[1] = result[1] || false;
+            continue;
           }
 
           if(!preparedName){
-            return [acc, true];
+            result[1] = true;
+            continue;
           }
 
           applyAttribute(target, { name: preparedName, value: preparedValue }, isBoolean($container[preparedName]));
-          return [acc.concat(prop), true];
-        }, [[], false]);
+          result[0].push(prop);
+          result[1] = true;
+        }
         Object.keys(vals).forEach(key => !(key in newVals) && target.removeAttribute(key));
         vals = newVals;
-        return foo;
+        return result;
       };
     });
   }
