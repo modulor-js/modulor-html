@@ -222,27 +222,19 @@ function processNode($container){
           }
 
           const attrs = [];
-          const prop = { name: preparedName, value: preparedValue };
 
-          if(typeof preparedName === 'string'){
-            newVals[preparedName] = preparedValue;
-            attrs.push(prop);
-          } else if(isObject(preparedName)){
+          if(isObject(preparedName)){
             for(let key in preparedName){
               const val = preparedName[key];
-              newVals[key] = preparedValue;
-              attrs.push({ name: key, value: val });
+              attrs.push({ name: key, value: val, updated: val !== vals[key] });
             }
           } else {
-            attrs.push(prop);
+            attrs.push({ name: preparedName, value: preparedValue, updated: chunkUpdated });
           }
 
-          if(!chunkUpdated){
-            continue;
-          }
-
-          for(let attr of attrs){
-            applyAttribute(target, attr, isBoolean($container[attr.name]));
+          for(let { name, value, updated } of attrs){
+            (typeof name === 'string') && (newVals[name] = value);
+            updated && applyAttribute(target, { name, value }, isBoolean($container[name]));
           }
 
         }
