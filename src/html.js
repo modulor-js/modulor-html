@@ -213,16 +213,16 @@ function processNode($container){
           const preparedValue = matchValue ? values[matchValue[2]] : replaceTokens(value, values);
           const preparedPrevValue = matchValue ? prevValues[matchValue[2]] : replaceTokens(value, prevValues);
 
+          if(!preparedName){
+            updated = updated || (preparedName !== preparedPrevName);
+            continue;
+          }
+
           if(typeof preparedName === 'string'){
             newVals[preparedName] = preparedValue;
           }
 
           if(preparedName === preparedPrevName && preparedValue === preparedPrevValue){
-            continue;
-          }
-
-          if(!preparedName){
-            updated = true;
             continue;
           }
 
