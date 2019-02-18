@@ -152,7 +152,7 @@ function processNode($container){
 
   const childAttributes = $container.attributes || [];
 
-  const dynamicAttrsList = [];
+  const dynamicAttributes = [];
 
   for(let j = 0; j < childAttributes.length; j++){
     const value = childAttributes[j].value;
@@ -195,20 +195,20 @@ function processNode($container){
     }
 
     if(nameIsDynamic || valueIsDynamic){
-      dynamicAttrsList.push({ name, value, matchName, matchValue });
+      dynamicAttributes.push({ name, value, matchName, matchValue });
     } else {
       attributes.push({ name, value, isBoolean: isBoolean($container[name]) });
     }
   }
 
-  if(dynamicAttrsList.length){
+  if(dynamicAttributes.length){
     attributes.push((target) => {
-      let vals = {};
+      let attrValues = {};
       let preparedPrevName, preparedPrevValue;
       return function update(values, prevValues){
-        const newVals = {};
+        const newAttrValues = {};
         let updated = false;
-        for(let { name, value, matchName, matchValue } of dynamicAttrsList){
+        for(let { name, value, matchName, matchValue } of dynamicAttributes){
           const preparedName = matchName ? values[matchName[2]] : replaceTokens(name, values);
           const preparedPrevName = matchName ? prevValues[matchName[2]] : replaceTokens(name, prevValues);
 
@@ -222,28 +222,28 @@ function processNode($container){
             continue;
           }
 
-          const attrs = [];
+          const newAttributes = [];
 
           if(isObject(preparedName)){
             for(let key in preparedName){
               const val = preparedName[key];
-              attrs.push({ name: key, value: val, updated: val !== vals[key] });
+              newAttributes.push({ name: key, value: val, updated: val !== attrValues[key] });
             }
           } else {
-            attrs.push({ name: preparedName, value: preparedValue, updated: chunkUpdated });
+            newAttributes.push({ name: preparedName, value: preparedValue, updated: chunkUpdated });
           }
 
-          for(let { name, value, updated } of attrs){
-            (typeof name === 'string') && (newVals[name] = value);
+          for(let { name, value, updated } of newAttributes){
+            (typeof name === 'string') && (newAttrValues[name] = value);
             updated && applyAttribute(target, { name, value }, isBoolean($container[name]));
           }
 
         }
-        for(let key in vals){
-          !(key in newVals) && target.removeAttribute(key);
+        for(let key in attrValues){
+          !(key in newAttrValues) && target.removeAttribute(key);
         }
-        vals = newVals;
-        return [newVals, updated];
+        attrValues = newAttrValues;
+        return [newAttrValues, updated];
       };
     });
   }
