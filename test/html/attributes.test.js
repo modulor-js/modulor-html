@@ -424,7 +424,7 @@ describe('boolean attrs and value', () => {
 });
 
 describe('name as object', () => {
-  it('updates attrs correctly', () => {
+  it('basic', () => {
     const container = document.createElement('div');
 
     const tpl = (attrs) => html`
@@ -443,6 +443,58 @@ describe('name as object', () => {
 
     render(tpl({ checked: 'true' }), container);
     expect(container.querySelector('input').checked).toBe(true);
+  });
+
+  it('multiple objects', () => {
+    const container = document.createElement('div');
+
+    const tpl = (attrs1, attrs2) => html`
+      <input ${attrs1} ${attrs2} />
+    `;
+
+    render(tpl({ foo: 'bar' }, { baz: 'bla' }), container);
+    expect(container.querySelector('input').getAttribute('foo')).toBe('bar');
+    expect(container.querySelector('input').getAttribute('baz')).toBe('bla');
+
+    render(tpl({ bar: 'foo' }, { baz: 'bla' }), container);
+    expect(container.querySelector('input').getAttribute('foo')).toBe(null);
+    expect(container.querySelector('input').getAttribute('bar')).toBe('foo');
+    expect(container.querySelector('input').getAttribute('baz')).toBe('bla');
+
+    render(tpl({ bar: 'foo', test: 'ok' }, { bar: 'bla' }), container);
+    expect(container.querySelector('input').getAttribute('foo')).toBe(null);
+    expect(container.querySelector('input').getAttribute('bar')).toBe('bla');
+    expect(container.querySelector('input').getAttribute('test')).toBe('ok');
+    expect(container.querySelector('input').getAttribute('baz')).toBe(null);
+
+    render(tpl({ bar: 'foo' }), container);
+    expect(container.querySelector('input').getAttribute('foo')).toBe(null);
+    expect(container.querySelector('input').getAttribute('bar')).toBe('foo');
+    expect(container.querySelector('input').getAttribute('test')).toBe(null);
+    expect(container.querySelector('input').getAttribute('baz')).toBe(null);
+  });
+
+  it('with static attributes', () => {
+    const container = document.createElement('div');
+
+    const tpl = (attrs) => html`
+      <input ${attrs} quux="foo" />
+    `;
+
+    render(tpl({ foo: 'bar' }), container);
+    expect(container.querySelector('input').getAttribute('foo')).toBe('bar');
+    expect(container.querySelector('input').getAttribute('quux')).toBe('foo');
+
+    render(tpl({ bla: 'bazz' }), container);
+    expect(container.querySelector('input').getAttribute('bla')).toBe('bazz');
+    expect(container.querySelector('input').getAttribute('foo')).toBe(null);
+    expect(container.querySelector('input').getAttribute('quux')).toBe('foo');
+
+    render(tpl({ quux: 'new' }), container);
+    expect(container.querySelector('input').getAttribute('bla')).toBe(null);
+    expect(container.querySelector('input').getAttribute('foo')).toBe(null);
+    expect(container.querySelector('input').getAttribute('quux')).toBe('new');
+
   });
 });
 
