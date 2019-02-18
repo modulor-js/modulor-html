@@ -208,7 +208,8 @@ function processNode($container){
       return function update(values, prevValues){
         const newAttrValues = {};
         let updated = false;
-        for(let { name, value, matchName, matchValue } of dynamicAttributes){
+        for(let index in dynamicAttributes){
+          const { name, value, matchName, matchValue } = dynamicAttributes[index];
           const preparedName = matchName ? values[matchName[2]] : replaceTokens(name, values);
           const preparedPrevName = matchName ? prevValues[matchName[2]] : replaceTokens(name, prevValues);
 
