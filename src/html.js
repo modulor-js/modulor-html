@@ -234,7 +234,8 @@ function processNode($container){
             newAttributes.push({ name: preparedName, value: preparedValue, updated: chunkUpdated });
           }
 
-          for(let { name, value, updated } of newAttributes){
+          for(let index in newAttributes){
+            const { name, value, updated } = newAttributes[index];
             (typeof name === 'string') && (newAttrValues[name] = value);
             updated && applyAttribute(target, { name, value }, isBoolean($container[name]));
           }
