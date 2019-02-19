@@ -495,6 +495,12 @@ describe('name as object', () => {
     expect(container.querySelector('input').getAttribute('foo')).toBe(null);
     expect(container.querySelector('input').getAttribute('quux')).toBe('new');
 
+    //render(tpl({ barr: 'ok' }), container);
+    //expect(container.querySelector('input').getAttribute('barr')).toBe('ok');
+    //expect(container.querySelector('input').getAttribute('bla')).toBe(null);
+    //expect(container.querySelector('input').getAttribute('foo')).toBe(null);
+    //expect(container.querySelector('input').getAttribute('quux')).toBe('foo');
+
   });
 });
 
