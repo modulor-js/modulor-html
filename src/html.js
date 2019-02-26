@@ -203,16 +203,10 @@ function processNode($container){
 
   if(dynamicAttributes.length){
     attributes.push((target) => {
-      let [attrValues, staticAttrs] = attributes.reduce(([attrValuesAcc, staticAttrsAcc], attr) => {
-        return [
-          Object.assign(attrValuesAcc, { [attr.name]: attr.value }),
-          staticAttrsAcc.concat(attr)
-        ]
-      }, [{}, []]);
-
+      let attrValues = {};
+      let preparedPrevName, preparedPrevValue;
       return function update(values, prevValues){
         const newAttrValues = {};
-        const newAttributes = staticAttrs.slice(); //copy static attrs
         let updated = false;
         for(let index in dynamicAttributes){
           const { name, value, matchName, matchValue } = dynamicAttributes[index];
@@ -229,6 +223,7 @@ function processNode($container){
             continue;
           }
 
+          const newAttributes = [];
 
           if(isObject(preparedName)){
             for(let key in preparedName){
@@ -239,11 +234,12 @@ function processNode($container){
             newAttributes.push({ name: preparedName, value: preparedValue, updated: chunkUpdated });
           }
 
-        }
-        for(let index in newAttributes){
-          const { name, value, updated } = newAttributes[index];
-          (typeof name === 'string') && (newAttrValues[name] = value);
-          updated && applyAttribute(target, { name, value }, isBoolean($container[name]));
+          for(let index in newAttributes){
+            const { name, value, updated } = newAttributes[index];
+            (typeof name === 'string') && (newAttrValues[name] = value);
+            updated && applyAttribute(target, { name, value }, isBoolean($container[name]));
+          }
+
         }
         for(let key in attrValues){
           !(key in newAttrValues) && target.removeAttribute(key);
