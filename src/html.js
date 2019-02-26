@@ -153,6 +153,7 @@ function processNode($container){
   const childAttributes = $container.attributes || [];
 
   const dynamicAttributes = [];
+  const staticAttributes = [];
 
   for(let j = 0; j < childAttributes.length; j++){
     const value = childAttributes[j].value;
@@ -198,6 +199,7 @@ function processNode($container){
       dynamicAttributes.push({ name, value, matchName, matchValue });
     } else {
       attributes.push({ name, value, isBoolean: isBoolean($container[name]) });
+      staticAttributes.push({ name, value, isBoolean: isBoolean($container[name]) });
     }
   }
 
@@ -240,6 +242,13 @@ function processNode($container){
             updated && applyAttribute(target, { name, value }, isBoolean($container[name]));
           }
 
+        }
+        for(let index in staticAttributes){
+          const { name, value, isBoolean } = staticAttributes[index];
+          if(!(name in newAttrValues)){
+            applyAttribute(target, { name, value }, isBoolean);
+            newAttrValues[name] = value;
+          }
         }
         for(let key in attrValues){
           !(key in newAttrValues) && target.removeAttribute(key);
