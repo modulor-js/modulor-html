@@ -356,8 +356,8 @@ describe('classes', () => {
 
     expect(container.innerHTML).toBe(snapshot1);
 
-    const data2 = Promise.resolve(['class-c', 'class-f']);
-    const snapshot2 = `<div class="foo class-c class-f"></div>
+    const data2 = Promise.resolve('class-c');
+    const snapshot2 = `<div class="foo class-c"></div>
     `;
 
     render(tpl(data2), container);

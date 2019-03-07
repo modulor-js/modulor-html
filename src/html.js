@@ -1,7 +1,7 @@
 import { NodesRange } from './range';
 import {
   emptyNode, same, hash, regExpEscape, noop,
-  isSameTextNode, isDefined, isPromise, isFunction, isObject, isBoolean
+  isSameTextNode, isDefined, isPromise, isFunction, isObject, isBoolean, isString
 } from './helpers';
 
 import { ELEMENT_NODE, TEXT_NODE, COMMENT_NODE, DEFAULT_NAMESPACE_URI } from './constants';
@@ -32,6 +32,7 @@ let replaceChunkRegex = new RegExp(getTokenRegExp(true), 'ig');
 let matchChunkRegex = new RegExp(`^${getTokenRegExp(true)}$`);
 
 let preventChildRenderingProp = 'preventChildRendering';
+let preventAttributeSet = 'preventAttributeSet';
 
 const CHUNK_TYPE_FUNCTION = 'function';
 const CHUNK_TYPE_ARRAY = 'array';
@@ -90,54 +91,9 @@ function applyAttribute(target, { name, value }){
     } catch(e) {}
   }
   target.setAttribute(name, value);
-}
-
-function applyClassFn(value, fn){
-  if(!isDefined(value) || value === ''){
-    return;
-  }
-  const chunkType = getChunkType(value);
-  if(chunkType === CHUNK_TYPE_PROMISE){
-    return value.then((newValue) => applyClassFn(newValue, fn));
-  }
-  let classesArray = chunkType === CHUNK_TYPE_ARRAY ? value : ('' + value).split(' ');
-  return classesArray.forEach((className) => fn(className));
-}
-
-function createVirtualElement(extend){
-  let classes = {};
-  const element = Object.assign({
-    props: noop,
-    tagName: null,
-    setAttribute: (name, value) => {
-      if(name === 'class'){
-        classes = value.split(' ').reduce((acc, className) => Object.assign(acc, {
-          [className]: true
-        }), {});
-      }
-    },
-    removeAttribute: noop,
-    classList: {
-      add: (value) => {
-        classes[value] = true;
-        element.className = Object.keys(classes).join(' ').trim();
-      },
-      remove: (value) => {
-        delete classes[value];
-        element.className = Object.keys(classes).join(' ').trim();
-      }
-    },
-    className: '',
-    attributes: [],
-    childNodes: [],
-    appendChild: noop,
-    isVirtual: true,
-    [preventChildRenderingProp]: true
-  }, extend);
-  return element;
 };
 
-function createCompare(applyFn, deleteFn){
+function createCompare(applyFn, deleteFn, preventCallbacks){
   const values = new Map();
   const set = (key, value) => {
     values.set(key, {
@@ -153,13 +109,13 @@ function createCompare(applyFn, deleteFn){
       if(!keep){
         values.delete(key);
         valuesUpdated = true;
-        return deleteFn(key, value);
+        return !preventCallbacks && deleteFn(key, value);
       }
       if(updated){
         valuesUpdated = true;
-        applyFn(key, value);
+        !preventCallbacks && applyFn(key, value);
       }
-      (typeof key === 'string') && (valuesObject[key] = value);
+      isString(key) && (valuesObject[key] = value);
       values.set(key, {
         value: value,
         keep: false
@@ -194,16 +150,23 @@ function processNode($container){
   })) : [];
 
   nodeCopy.attributes = isDynamic ? [(target) => {
+    const preventApply = target[preventAttributeSet];
     const [setAttr, updateAttrs] = createCompare(
       (name, value) => applyAttribute(target, { name, value }),
       (name) => {
         target.removeAttribute(name);
         isBoolean(target[name]) && (target[name] = false);
-      }
+      },
+      preventApply
     );
     const [setClass, updateClasses] = createCompare(
-      (key) => applyClassFn(key, (className) => target.classList.add(className)),
-      (key) => applyClassFn(key, (className) => target.classList.remove(className))
+      function addClass(className){
+        isPromise(className) ? className.then(addClass) : className && target.classList.add(className);
+      },
+      function removeClass(className){
+        isPromise(className) ? className.then(removeClass) : className && target.classList.remove(className);
+      },
+      preventApply
     );
 
     return function update(values){
@@ -219,12 +182,13 @@ function processNode($container){
           for(let index in classes){
             const className = classes[index];
             const newValue = replaceTokens(className, values, className.match(matchChunkRegex));
-            newValue && setClass(newValue, true);
+            const classesList = isString(newValue) ? newValue.split(' ') : [].concat((newValue || []));
+            classesList.forEach(setClass);
           }
-          const [classUpdated] = updateClasses();
+          const [classUpdated, classesMap] = updateClasses();
           attrsUpdated = attrsUpdated || classUpdated;
 
-          newAttrValues.className = target.className;
+          newAttrValues.className = Object.keys(classesMap).join(' ');
           continue;
         }
 
@@ -308,23 +272,23 @@ function processNode($container){
           }
           const chunkType = getChunkType(newValue);
 
+          if(chunkType === CHUNK_TYPE_FUNCTION){
+            const $el = {
+              props: (value) => render(newValue(value), range),
+              attributes: [],
+              [preventAttributeSet]: true,
+              [preventChildRenderingProp]: true
+            };
+            const [update] = copyAttributes($el, nodeCopy);
+
+            return update(values);
+          }
+
           const container = {
             childNodes: [Object.assign({}, nodeCopy, {
               tagName: newValue
             })]
           };
-
-          if(chunkType === CHUNK_TYPE_FUNCTION){
-            const target = {
-              appendChild: noop,
-              replaceChild: noop,
-              childNodes: [createVirtualElement({
-                props: (value) => render(newValue(value), range)
-              })]
-            };
-            [update] = morph(container, target);
-            return update(values);
-          }
 
           const [newUpdate, initialRender] = morph(container, range, { useDocFragment: true });
           newUpdate(values);
@@ -507,7 +471,7 @@ function copyAttributes(target, source, interceptChildrenRendering){
 
   if('props' in target){
     const setProps = isFunction(target.props)
-      ? target.props
+      ? (props, updated) => target.props(props, updated)
       : (props, updated) => updated && (target.props = props);
     if(updates.length){
       return [(values, prevValues) => {
@@ -525,10 +489,6 @@ function copyAttributes(target, source, interceptChildrenRendering){
 }
 
 export function morph($source, $target, options = {}){
-
-  if($target[preventChildRenderingProp]){
-    return [noop, []];
-  }
 
   let updates = [];
 
@@ -597,19 +557,16 @@ export function morph($source, $target, options = {}){
           const namespaceURI = $sourceElement.namespaceURI;
           const tagName = $sourceElement.tagName;
 
-          let newChild;
-          let morphUpdates = [];
-          if($targetElement && $targetElement[preventChildRenderingProp]){
-            newChild = $targetElement;
-          } else {
-            newChild = namespaceURI === DEFAULT_NAMESPACE_URI
+          const newChild = namespaceURI === DEFAULT_NAMESPACE_URI
               ? document.createElement(tagName.toLowerCase())
               : document.createElementNS(namespaceURI, tagName.toLowerCase());
 
+
+          if(!newChild[preventChildRenderingProp]){
+            updates = updates.concat(morph($sourceElement, newChild)[0])
           }
 
-          updates = updates.concat(morph($sourceElement, newChild)[0])
-            .concat(copyAttributes(newChild, $sourceElement));
+          updates = updates.concat(copyAttributes(newChild, $sourceElement));
 
           domFn(newChild);
 

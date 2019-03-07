@@ -39,6 +39,10 @@ export function isBoolean(value){
   return typeof value === typeof true;
 }
 
+export function isString(value){
+  return typeof value === 'string';
+}
+
 //hash function taken from https://github.com/darkskyapp/string-hash/blob/master/index.js
 export function hash(str) {
   var hash = 5381,
