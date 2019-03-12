@@ -35,7 +35,6 @@
     "@babel/core": "^7.3.4",
     "@babel/plugin-transform-runtime": "^7.3.4",
     "@babel/preset-env": "^7.3.4",
-    "babel-jest": "^24.4.0",
     "babel-plugin-transform-node-env-inline": "^0.4.3",
     "custom-elements-jest": "github:nogizhopaboroda/custom-elements",
     "document-register-element": "^1.7.0",
