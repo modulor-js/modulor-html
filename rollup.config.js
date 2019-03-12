@@ -27,4 +27,11 @@ export default [{
     format: 'cjs',
   },
   plugins
+}, {
+  input: 'src/element.js',
+  output: {
+    file: 'build/element.js',
+    format: 'cjs',
+  },
+  plugins
 }];

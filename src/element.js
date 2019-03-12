@@ -1,4 +1,4 @@
-import { html, render, NodesRange } from '@modulor-js/html';
+import { render } from '@modulor-js/html';
 import { unsafeHtml } from '@modulor-js/html/directives';
 
 export function createElement(renderFn){
