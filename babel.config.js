@@ -3,9 +3,6 @@ module.exports = {
     [
       '@babel/preset-env',
       {
-        targets: {
-          esmodules: true,
-        },
         useBuiltIns: 'entry',
       },
     ],
@@ -13,6 +10,9 @@ module.exports = {
   env: {
     test: {
       plugins: ['@babel/plugin-transform-runtime'],
+    },
+    production: {
+      plugins: ['transform-node-env-inline'],
     },
   },
 };

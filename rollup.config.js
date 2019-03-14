@@ -2,12 +2,8 @@ import { uglify } from 'rollup-plugin-uglify';
 import babel from 'rollup-plugin-babel';
 
 const plugins = [
-  babel({
-    babelrc: false,
-    presets: ['@babel/preset-env'],
-    plugins: ['transform-node-env-inline']
-  }),
-  uglify()
+  babel(),
+  uglify(),
 ];
 
 export default [{

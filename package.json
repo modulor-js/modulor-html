@@ -11,7 +11,7 @@
     "test:watch": "npm run test -- --watch --no-cache",
     "test:platform": "npm run test -- -c jest.platform-polyfill.config.js",
     "test:build": "npm run test -- -c jest.build.config.js",
-    "build": "rollup -c",
+    "build": "NODE_ENV=production rollup -c",
     "build:watch": "npm run build -- --watch",
     "benchmark": "npm run test -- -c jest.benchmark.config.js --verbose",
     "benchmark:watch": "npm run benchmark -- --watch",
