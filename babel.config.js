@@ -4,6 +4,7 @@ module.exports = {
       '@babel/preset-env',
       {
         useBuiltIns: 'entry',
+        exclude: ['@babel/plugin-transform-typeof-symbol']
       },
     ],
   ],
