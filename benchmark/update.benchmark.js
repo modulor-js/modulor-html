@@ -4,20 +4,6 @@ import { getRandomString } from './helpers';
 
 describe('update benchmark', () => {
 
-  describe('text node update', () => {
-    const tpl = (scope, html) => html`
-      <span>${scope}</span>
-    `;
-
-    const renderers = createRenderers(tpl, ['modulor', 'lit']);
-
-    renderers.forEach(({ name, fn }) => {
-      const container = document.createElement('div');
-      const result = bench(() => fn(getRandomString(), container));
-      it(`${name}: ${result.hz} ops/sec`, () => expect(true).toBe(true));
-    });
-  });
-
   describe('array update', () => {
     const tpl = (scope, html) => html`
       ${scope.map(item => html`

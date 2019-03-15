@@ -23,3 +23,4 @@ require('../benchmark/initial_rendering.benchmark');
 require('../benchmark/update.benchmark');
 require('../benchmark/update/classes.benchmark');
 require('../benchmark/update/attributes.benchmark');
+require('../benchmark/update/text_node.benchmark');
