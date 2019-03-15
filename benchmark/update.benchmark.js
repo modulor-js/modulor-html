@@ -1,5 +1,6 @@
-import { bench } from '../benchmark';
-import { createRenderers } from '../benchmark/renderers';
+import { bench } from '.';
+import { createRenderers } from './renderers';
+import { getRandomString } from './helpers';
 
 describe('update benchmark', () => {
 
@@ -17,20 +18,6 @@ describe('update benchmark', () => {
     });
   });
 
-  describe('class update', () => {
-    const tpl = (scope, html) => html`
-      <span class="${scope[0]} ${scope[1]} foo"></span>
-    `;
-
-    const renderers = createRenderers(tpl, ['modulor', 'lit']);
-
-    renderers.forEach(({ name, fn }) => {
-      const container = document.createElement('div');
-      const result = bench(() => fn(['test', 'bla'], container));
-      it(`${name}: ${result.hz} ops/sec`, () => expect(true).toBe(true));
-    });
-  });
-
   describe('text node update', () => {
     const tpl = (scope, html) => html`
       <span>${scope}</span>
@@ -40,7 +27,7 @@ describe('update benchmark', () => {
 
     renderers.forEach(({ name, fn }) => {
       const container = document.createElement('div');
-      const result = bench(() => fn(Math.random().toString(36).substring(7), container));
+      const result = bench(() => fn(getRandomString(), container));
       it(`${name}: ${result.hz} ops/sec`, () => expect(true).toBe(true));
     });
   });
