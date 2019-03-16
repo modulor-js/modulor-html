@@ -2,7 +2,7 @@ import {
   parseHTML,
   configure, config,
   matchModulorChunks, hasModulorChunks, buildChunk,
-  getDefaultNamespaceURI, createElement, createElementNS, createTextNode, createComment, createDocumentFragment,
+  createElement, createElementNS, createTextNode, createComment, createDocumentFragment,
 } from './config';
 
 import { NodesRange } from './range';
@@ -540,9 +540,7 @@ export function morph($source, $target, options = {}){
           const namespaceURI = $sourceElement.namespaceURI;
           const tagName = $sourceElement.tagName;
 
-          const newChild = namespaceURI === getDefaultNamespaceURI()
-              ? createElement(tagName.toLowerCase())
-              : createElementNS(namespaceURI, tagName.toLowerCase());
+          const newChild = createElement(tagName.toLowerCase(), namespaceURI);
 
 
           if(!newChild[config.preventChildRenderingProp]){
