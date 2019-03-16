@@ -1,5 +1,5 @@
 import {
-  parseHTML,
+  parseHTML, isNode,
   configure, config,
   matchModulorChunks, hasModulorChunks, buildChunk,
   createElement, createElementNS, createTextNode, createComment, createDocumentFragment,
@@ -39,7 +39,7 @@ function getChunkType(chunk){
     return CHUNK_TYPE_FUNCTION;
   } else if(chunk instanceof Array){
     return CHUNK_TYPE_ARRAY;
-  } else if(chunk instanceof Node){
+  } else if(isNode(chunk)){
     return CHUNK_TYPE_ELEMENT;
   } else if(isPromise(chunk)){
     return CHUNK_TYPE_PROMISE;
