@@ -30,6 +30,10 @@ export function configure(values){
   }
 };
 
+export function parse(markup){
+  return config.parse(markup);
+}
+
 export function getDocument(){
   return config.document;
 };

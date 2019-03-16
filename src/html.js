@@ -15,8 +15,6 @@ const templatesCache = {};
 const updatesMap = new Map();
 const rangesMap = new Map();
 
-let parser = new DOMParser();
-
 
 const PREPROCESS_TEMPLATE_REGEX = /<([/]?)([^ />]+)((?:\s+[\w}{:-]+(?:([\s])*=\s*(?:(?:"[^"]*")|(?:'[^']*')|[^>\s]+))?)*)\s*(\/?)[ ]*>/igm;
 const PREPROCESS_ATTR_REGEX = /([-A-Za-z0-9_}{:]+)(?:\s*=\s*(?:(?:"((?:\\.|[^"])*)")|(?:'((?:\\.|[^'])*)')|([^>\s]+)))?/gim;
@@ -296,9 +294,9 @@ function processNode($container){
   return nodeCopy;
 }
 
-function generateContainer(markup){
-  return processNode(parser.parseFromString(markup, "text/html").body);
-};
+//function generateContainer(markup){
+  //return processNode(config.parse(markup));
+//};
 
 function prepareLiterals([firstChunk, ...restChunks]){
   return restChunks.reduce((acc, chunk, index) => {
@@ -306,11 +304,6 @@ function prepareLiterals([firstChunk, ...restChunks]){
     return acc.concat(keyName).concat(chunk);
   }, firstChunk);
 };
-
-//function getTokenRegExp(groupMatches){
-  //const indexRegex = `${groupMatches ? '(' : ''}\\d+${groupMatches ? ')' : ''}`;
-  //return `(${regExpEscape(PREFIX)}${indexRegex}${regExpEscape(POSTFIX)})`;
-//};
 
 function preprocess(str){
 
@@ -607,7 +600,7 @@ export function html(chunks = [], ...values){
 
   if(!isDefined(cached)){
     const template = prepareLiterals(chunks);
-    container = generateContainer(preprocess(template));
+    container = processNode(config.parse(preprocess(template)))
     templatesCache[templateId] = container;
   } else {
     container = cached;
@@ -639,7 +632,7 @@ export function stopNode(){};
 // below will not get to final bundle because of tree shacking
 if(process.env.NODE_ENV === 'test'){
   Object.assign(module.exports, {
-    replaceTokens, processNode, generateContainer,
+    replaceTokens, processNode,
     copyAttributes, prepareLiterals,
     preprocess,
   });
