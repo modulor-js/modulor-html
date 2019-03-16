@@ -1,12 +1,12 @@
 import {
-  html, render, r, createHtml, copyAttributes, processNode, setPrefix, setPostfix, updateChunkRegexes, setDataAttributeName,
+  html, render, r, createHtml, copyAttributes, processNode, configure,
 } from '../../src/html';
 
-setPrefix('{modulor_html_chunk:');
-setPostfix('}');
-setDataAttributeName('attrs-data');
-
-updateChunkRegexes();
+configure({
+  prefix: '{modulor_html_chunk:',
+  postfix: '}',
+  dataAttributeName: 'attrs-data',
+});
 
 describe('copy attributes', () => {
 

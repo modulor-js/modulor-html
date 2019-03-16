@@ -1,12 +1,14 @@
+import { getDocument, createElement, configure, config } from './config';
+
 import { NodesRange } from './range';
 import {
-  emptyNode, same, hash, regExpEscape, noop,
+  emptyNode, same, hash, noop,
   isSameTextNode, isDefined, isPromise, isFunction, isObject, isBoolean, isString
 } from './helpers';
 
 import { ELEMENT_NODE, TEXT_NODE, COMMENT_NODE, DEFAULT_NAMESPACE_URI } from './constants';
 
-export { NodesRange, emptyNode };
+export { NodesRange, emptyNode, configure };
 
 const templatesCache = {};
 
@@ -15,24 +17,12 @@ const rangesMap = new Map();
 
 let parser = new DOMParser();
 
-let PREFIX = `{modulor_html_chunk_${+new Date()}:`;
-let POSTFIX = '}';
 
 const PREPROCESS_TEMPLATE_REGEX = /<([/]?)([^ />]+)((?:\s+[\w}{:-]+(?:([\s])*=\s*(?:(?:"[^"]*")|(?:'[^']*')|[^>\s]+))?)*)\s*(\/?)[ ]*>/igm;
 const PREPROCESS_ATTR_REGEX = /([-A-Za-z0-9_}{:]+)(?:\s*=\s*(?:(?:"((?:\\.|[^"])*)")|(?:'((?:\\.|[^'])*)')|([^>\s]+)))?/gim;
 
 const sanitizeTags = ['table', 'tr', 'td', 'style'];
 
-let specialTagName = `modulor-dynamic-tag-${+new Date()}`;
-let specialAttributeName = `modulor-chunk-${+new Date()}`;
-let dataAttributeName = `modulor-data-attributes-${+new Date()}`;
-
-let findChunksRegex = new RegExp(getTokenRegExp(), 'i');
-let replaceChunkRegex = new RegExp(getTokenRegExp(true), 'ig');
-let matchChunkRegex = new RegExp(`^${getTokenRegExp(true)}$`);
-
-let preventChildRenderingProp = 'preventChildRendering';
-let preventAttributeSet = 'preventAttributeSet';
 
 const CHUNK_TYPE_FUNCTION = 'function';
 const CHUNK_TYPE_ARRAY = 'array';
@@ -60,7 +50,7 @@ function replaceTokens(text, dataMap = [], matchChunk){
   if(matchChunk){
     return dataMap[matchChunk[2]];
   }
-  return text.replace(replaceChunkRegex, (token, _, index) => {
+  return text.replace(config.replaceChunkRegex, (token, _, index) => {
     const chunk = dataMap[index];
     return isDefined(chunk) ? chunk : '';
   });
@@ -137,20 +127,20 @@ function processNode($container){
 
   const { childNodes } = nodeCopy;
 
-  const attrsData = $container.getAttribute(dataAttributeName);
-  const isDynamic = findChunksRegex.exec(attrsData);
+  const attrsData = $container.getAttribute(config.dataAttributeName);
+  const isDynamic = config.findChunksRegex.exec(attrsData);
 
   const attrsList = attrsData ? JSON.parse(attrsData).map(({ name, value = true }) => ({
     name,
     value,
-    matchName: matchChunkRegex.exec(name),
-    matchValue: matchChunkRegex.exec(value),
-    nameIsDynamic: findChunksRegex.test(name),
-    valueIsDynamic: findChunksRegex.test(value),
+    matchName: config.matchChunkRegex.exec(name),
+    matchValue: config.matchChunkRegex.exec(value),
+    nameIsDynamic: config.findChunksRegex.test(name),
+    valueIsDynamic: config.findChunksRegex.test(value),
   })) : [];
 
   nodeCopy.attributes = isDynamic ? [(target) => {
-    const preventApply = target[preventAttributeSet];
+    const preventApply = target[config.preventAttributeSet];
     const [setAttr, updateAttrs] = createCompare(
       (name, value) => applyAttribute(target, { name, value }),
       (name) => {
@@ -181,7 +171,7 @@ function processNode($container){
           const classes = value.split(' ');
           for(let index in classes){
             const className = classes[index];
-            const newValue = replaceTokens(className, values, className.match(matchChunkRegex));
+            const newValue = replaceTokens(className, values, className.match(config.matchChunkRegex));
             const classesList = isString(newValue) ? newValue.split(' ') : [].concat((newValue || []));
             classesList.forEach(setClass);
           }
@@ -221,11 +211,11 @@ function processNode($container){
     const $childNode = containerChildNodes[i];
 
     if($childNode.nodeType === TEXT_NODE){
-      $childNode.textContent.split(findChunksRegex).forEach((chunk) => {
+      $childNode.textContent.split(config.findChunksRegex).forEach((chunk) => {
         if(!chunk){
           return;
         }
-        const match = matchChunkRegex.exec(chunk);
+        const match = config.matchChunkRegex.exec(chunk);
         childNodes.push(match ? (range) => {
           return (values) => render(values[match[2]], range);
         } : {
@@ -238,7 +228,7 @@ function processNode($container){
 
     if($childNode.nodeType === COMMENT_NODE){
 
-      childNodes.push($childNode.textContent.match(findChunksRegex) ? (range) => {
+      childNodes.push($childNode.textContent.match(config.findChunksRegex) ? (range) => {
         const $element = document.createComment('');
         const content = $childNode.textContent;
         range.appendChild($element);
@@ -256,11 +246,11 @@ function processNode($container){
   }
 
   const tagName = $container.tagName;
-  if(tagName === specialTagName.toUpperCase()){
-    const chunkName = $container.attributes[specialAttributeName].value;
-    const matchChunk = chunkName.match(matchChunkRegex);
+  if(tagName === config.specialTagName.toUpperCase()){
+    const chunkName = $container.attributes[config.specialAttributeName].value;
+    const matchChunk = chunkName.match(config.matchChunkRegex);
 
-    if(chunkName.match(findChunksRegex)){
+    if(chunkName.match(config.findChunksRegex)){
       return (range) => {
         let update;
         return (values, prevValues) => {
@@ -276,8 +266,8 @@ function processNode($container){
             const $el = {
               props: (value) => render(newValue(value), range),
               attributes: [],
-              [preventAttributeSet]: true,
-              [preventChildRenderingProp]: true
+              [config.preventAttributeSet]: true,
+              [config.preventChildRenderingProp]: true
             };
             const [update] = copyAttributes($el, nodeCopy);
 
@@ -312,15 +302,15 @@ function generateContainer(markup){
 
 function prepareLiterals([firstChunk, ...restChunks]){
   return restChunks.reduce((acc, chunk, index) => {
-    const keyName = `${PREFIX}${index}${POSTFIX}`;
+    const keyName = `${config.prefix}${index}${config.postfix}`;
     return acc.concat(keyName).concat(chunk);
   }, firstChunk);
 };
 
-function getTokenRegExp(groupMatches){
-  const indexRegex = `${groupMatches ? '(' : ''}\\d+${groupMatches ? ')' : ''}`;
-  return `(${regExpEscape(PREFIX)}${indexRegex}${regExpEscape(POSTFIX)})`;
-};
+//function getTokenRegExp(groupMatches){
+  //const indexRegex = `${groupMatches ? '(' : ''}\\d+${groupMatches ? ')' : ''}`;
+  //return `(${regExpEscape(PREFIX)}${indexRegex}${regExpEscape(POSTFIX)})`;
+//};
 
 function preprocess(str){
 
@@ -334,14 +324,14 @@ function preprocess(str){
 
     const match = attrs.match(PREPROCESS_ATTR_REGEX);
 
-    attrs = (match && tagName !== '!--') ? ` ${dataAttributeName}='${JSON.stringify(match.reduce((acc, attr) => {
+    attrs = (match && tagName !== '!--') ? ` ${config.dataAttributeName}='${JSON.stringify(match.reduce((acc, attr) => {
       const [name, value] = attr.split('=');
       return acc.concat({ name, value: value ? value.replace(/^['"]([^'"]*)['"]$/, '$1') : undefined });
     }, []))}'` : attrs;
 
-    if(~sanitizeTags.indexOf(tagName) || tagName.match(findChunksRegex)){
-      attrs = ` ${specialAttributeName}="${tagName.trim()}"${attrs}`;
-      tagName = specialTagName;
+    if(~sanitizeTags.indexOf(tagName) || tagName.match(config.findChunksRegex)){
+      attrs = ` ${config.specialAttributeName}="${tagName.trim()}"${attrs}`;
+      tagName = config.specialTagName;
     }
 
     if(isSelfClosing){
@@ -453,7 +443,7 @@ function copyAttributes(target, source, interceptChildrenRendering){
     props[name === 'class' ? 'className' : name] = value;
   }
 
-  if(target[preventChildRenderingProp]){
+  if(target[config.preventChildRenderingProp]){
     updates.push((values) => {
       const children = (range, update) => {
         if(update){
@@ -562,7 +552,7 @@ export function morph($source, $target, options = {}){
               : document.createElementNS(namespaceURI, tagName.toLowerCase());
 
 
-          if(!newChild[preventChildRenderingProp]){
+          if(!newChild[config.preventChildRenderingProp]){
             updates = updates.concat(morph($sourceElement, newChild)[0])
           }
 
@@ -610,7 +600,7 @@ export function html(chunks = [], ...values){
     return this;
   }
 
-  const templateId = hash(chunks.join(PREFIX + POSTFIX));
+  const templateId = hash(chunks.join(config.prefix + config.postfix));
   const cached = templatesCache[templateId];
 
   let container;
@@ -652,20 +642,6 @@ if(process.env.NODE_ENV === 'test'){
     replaceTokens, processNode, generateContainer,
     copyAttributes, prepareLiterals,
     preprocess,
-    setPrefix: (value) => PREFIX = value,
-    setPostfix: (value) => POSTFIX = value,
-    setCapitalisePrefix: (value) => {
-      capitalisePrefix = value;
-      capitaliseRegex = new RegExp(`${regExpEscape(capitalisePrefix)}([a-z]+)${regExpEscape(POSTFIX)}`, 'g');
-    },
-    setSpecialTagName: (value) => specialTagName = value,
-    setSpecialAttributeName: (value) => specialAttributeName = value,
-    setDataAttributeName: (value) => dataAttributeName = value,
-    updateChunkRegexes: () => {
-      findChunksRegex = new RegExp(getTokenRegExp(), 'i');
-      replaceChunkRegex = new RegExp(getTokenRegExp(true), 'ig');
-      matchChunkRegex = new RegExp(`^${getTokenRegExp(true)}$`);
-    }
   });
 }
 

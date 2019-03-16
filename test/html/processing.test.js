@@ -1,14 +1,14 @@
 import {
-  html, prepareLiterals, replaceTokens,
-  setPrefix, setPostfix, updateChunkRegexes, setSpecialTagName, setSpecialAttributeName, setDataAttributeName, preprocess
+  html, prepareLiterals, replaceTokens, preprocess, configure,
 } from '../../src/html';
 
-setPrefix('{modulor_html_chunk:');
-setPostfix('}');
-setSpecialTagName('modulor-dynamic-tag');
-setSpecialAttributeName('modulor-chunk');
-setDataAttributeName('attrs-data');
-updateChunkRegexes();
+configure({
+  prefix: '{modulor_html_chunk:',
+  postfix: '}',
+  dataAttributeName: 'attrs-data',
+  specialAttributeName: `modulor-chunk`,
+  specialTagName: `modulor-dynamic-tag`,
+});
 
 it('is a function', () => {
   expect(typeof html).toBe('function');

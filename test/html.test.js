@@ -1,6 +1,6 @@
 import 'web-components-polyfill';
 
-import { html, render, stopNode, Template, containersMap } from '@modulor-js/html';
+import { html, render, stopNode } from '@modulor-js/html';
 import { r } from '@modulor-js/html/directives';
 
 
