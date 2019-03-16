@@ -1,4 +1,4 @@
-import { getDocument, createElement, configure, config } from './config';
+import { getDocument, createElement, configure, config, matchModulorChunks, hasModulorChunks } from './config';
 
 import { NodesRange } from './range';
 import {
@@ -126,18 +126,17 @@ function processNode($container){
   const { childNodes } = nodeCopy;
 
   const attrsData = $container.getAttribute(config.dataAttributeName);
-  const isDynamic = config.findChunksRegex.exec(attrsData);
 
   const attrsList = attrsData ? JSON.parse(attrsData).map(({ name, value = true }) => ({
     name,
     value,
-    matchName: config.matchChunkRegex.exec(name),
-    matchValue: config.matchChunkRegex.exec(value),
-    nameIsDynamic: config.findChunksRegex.test(name),
-    valueIsDynamic: config.findChunksRegex.test(value),
+    matchName: matchModulorChunks(name),
+    matchValue: matchModulorChunks(value),
+    nameIsDynamic: hasModulorChunks(name),
+    valueIsDynamic: hasModulorChunks(value),
   })) : [];
 
-  nodeCopy.attributes = isDynamic ? [(target) => {
+  nodeCopy.attributes = hasModulorChunks(attrsData) ? [(target) => {
     const preventApply = target[config.preventAttributeSet];
     const [setAttr, updateAttrs] = createCompare(
       (name, value) => applyAttribute(target, { name, value }),
@@ -169,7 +168,7 @@ function processNode($container){
           const classes = value.split(' ');
           for(let index in classes){
             const className = classes[index];
-            const newValue = replaceTokens(className, values, className.match(config.matchChunkRegex));
+            const newValue = replaceTokens(className, values, matchModulorChunks(className));
             const classesList = isString(newValue) ? newValue.split(' ') : [].concat((newValue || []));
             classesList.forEach(setClass);
           }
@@ -213,7 +212,7 @@ function processNode($container){
         if(!chunk){
           return;
         }
-        const match = config.matchChunkRegex.exec(chunk);
+        const match = matchModulorChunks(chunk);
         childNodes.push(match ? (range) => {
           return (values) => render(values[match[2]], range);
         } : {
@@ -226,7 +225,7 @@ function processNode($container){
 
     if($childNode.nodeType === COMMENT_NODE){
 
-      childNodes.push($childNode.textContent.match(config.findChunksRegex) ? (range) => {
+      childNodes.push(hasModulorChunks($childNode.textContent) ? (range) => {
         const $element = document.createComment('');
         const content = $childNode.textContent;
         range.appendChild($element);
@@ -246,9 +245,9 @@ function processNode($container){
   const tagName = $container.tagName;
   if(tagName === config.specialTagName.toUpperCase()){
     const chunkName = $container.attributes[config.specialAttributeName].value;
-    const matchChunk = chunkName.match(config.matchChunkRegex);
+    const matchChunk = matchModulorChunks(chunkName);
 
-    if(chunkName.match(config.findChunksRegex)){
+    if(hasModulorChunks(chunkName)){
       return (range) => {
         let update;
         return (values, prevValues) => {
@@ -294,10 +293,6 @@ function processNode($container){
   return nodeCopy;
 }
 
-//function generateContainer(markup){
-  //return processNode(config.parse(markup));
-//};
-
 function prepareLiterals([firstChunk, ...restChunks]){
   return restChunks.reduce((acc, chunk, index) => {
     const keyName = `${config.prefix}${index}${config.postfix}`;
@@ -322,7 +317,7 @@ function preprocess(str){
       return acc.concat({ name, value: value ? value.replace(/^['"]([^'"]*)['"]$/, '$1') : undefined });
     }, []))}'` : attrs;
 
-    if(~sanitizeTags.indexOf(tagName) || tagName.match(config.findChunksRegex)){
+    if(~sanitizeTags.indexOf(tagName) || hasModulorChunks(tagName)){
       attrs = ` ${config.specialAttributeName}="${tagName.trim()}"${attrs}`;
       tagName = config.specialTagName;
     }

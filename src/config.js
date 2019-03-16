@@ -30,13 +30,11 @@ export function configure(values){
   }
 };
 
-export function parse(markup){
-  return config.parse(markup);
-}
+export const matchModulorChunks = (value) => config.matchChunkRegex.exec(value);
+export const hasModulorChunks = (value) => config.findChunksRegex.test(value);
 
-export function getDocument(){
-  return config.document;
-};
+export const parse = (markup) => config.parse(markup);
+export const getDocument = () => config.document;
 
 export function createElement(tagName){
   getDocument().createElement(tagName);
