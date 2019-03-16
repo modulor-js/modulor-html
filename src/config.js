@@ -32,8 +32,9 @@ export function configure(values){
 
 export const matchModulorChunks = (value) => config.matchChunkRegex.exec(value);
 export const hasModulorChunks = (value) => config.findChunksRegex.test(value);
+export const buildChunk = (chunkNumber) => `${config.prefix}${chunkNumber}${config.postfix}`;
 
-export const parse = (markup) => config.parse(markup);
+export const parseHTML = (markup) => config.parse(markup);
 export const getDocument = () => config.document;
 
 export function createElement(tagName){

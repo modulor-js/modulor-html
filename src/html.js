@@ -1,4 +1,4 @@
-import { getDocument, createElement, configure, config, matchModulorChunks, hasModulorChunks } from './config';
+import { parseHTML, getDocument, createElement, configure, config, matchModulorChunks, hasModulorChunks, buildChunk } from './config';
 
 import { NodesRange } from './range';
 import {
@@ -295,7 +295,7 @@ function processNode($container){
 
 function prepareLiterals([firstChunk, ...restChunks]){
   return restChunks.reduce((acc, chunk, index) => {
-    const keyName = `${config.prefix}${index}${config.postfix}`;
+    const keyName = buildChunk(index);
     return acc.concat(keyName).concat(chunk);
   }, firstChunk);
 };
@@ -588,14 +588,14 @@ export function html(chunks = [], ...values){
     return this;
   }
 
-  const templateId = hash(chunks.join(config.prefix + config.postfix));
+  const templateId = hash(chunks.join(buildChunk('')));
   const cached = templatesCache[templateId];
 
   let container;
 
   if(!isDefined(cached)){
     const template = prepareLiterals(chunks);
-    container = processNode(config.parse(preprocess(template)))
+    container = processNode(parseHTML(preprocess(template)))
     templatesCache[templateId] = container;
   } else {
     container = cached;
