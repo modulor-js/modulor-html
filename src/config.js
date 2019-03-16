@@ -1,6 +1,3 @@
-import { regExpEscape } from './helpers';
-
-
 export const config = {};
 
 configure({
@@ -15,6 +12,10 @@ configure({
   preventChildRenderingProp: 'preventChildRendering',
   preventAttributeSet: 'preventAttributeSet',
 });
+
+function regExpEscape(literalString){
+  return literalString.replace(/[-[\]{}()*+!<=:?.\/\\^$|#\s,]/g, '\\$&');
+};
 
 function getTokenRegExp(groupMatches){
   const indexRegex = `${groupMatches ? '(' : ''}\\d+${groupMatches ? ')' : ''}`;
