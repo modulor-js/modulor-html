@@ -37,6 +37,8 @@ export const buildChunk = (chunkNumber) => `${config.prefix}${chunkNumber}${conf
 export const parseHTML = (markup) => config.parse(markup);
 export const getDocument = () => config.document;
 
-export function createElement(tagName){
-  getDocument().createElement(tagName);
-};
+export const createElement = (tagName) => getDocument().createElement(tagName);
+export const createElementNS = (namespaceURI, tagName) => getDocument().createElementNS(namespaceURI, tagName);
+export const createTextNode = (content) => getDocument().createTextNode(content);
+export const createComment = (content) => getDocument().createComment(content);
+export const createDocumentFragment = () => getDocument().createDocumentFragment();

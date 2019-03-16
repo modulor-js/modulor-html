@@ -1,4 +1,9 @@
-import { parseHTML, getDocument, createElement, configure, config, matchModulorChunks, hasModulorChunks, buildChunk } from './config';
+import {
+  parseHTML,
+  configure, config,
+  matchModulorChunks, hasModulorChunks, buildChunk,
+  createElement, createElementNS, createTextNode, createComment, createDocumentFragment,
+} from './config';
 
 import { NodesRange } from './range';
 import {
@@ -226,7 +231,7 @@ function processNode($container){
     if($childNode.nodeType === COMMENT_NODE){
 
       childNodes.push(hasModulorChunks($childNode.textContent) ? (range) => {
-        const $element = document.createComment('');
+        const $element = createComment('');
         const content = $childNode.textContent;
         range.appendChild($element);
         return (values) => {
@@ -332,7 +337,7 @@ function preprocess(str){
   });
 };
 
-export function render(value, range = document.createDocumentFragment()){
+export function render(value, range = createDocumentFragment()){
   const cached = updatesMap.get(range) || {};
   const chunkType = getChunkType(value);
   const { lastChunk, lastRenderedChunkType, update } = cached;
@@ -378,7 +383,7 @@ const chunkProcessingFunctions = {
   },
   [CHUNK_TYPE_UNDEFINED]: emptyNode,
   [CHUNK_TYPE_TEXT]: (range, value) => {
-    const textNode = document.createTextNode(value);
+    const textNode = createTextNode(value);
     range.appendChild(textNode);
     return (value) => textNode.textContent = value;
   },
@@ -470,7 +475,7 @@ export function morph($source, $target, options = {}){
 
   let updates = [];
 
-  const $currentTarget = options.useDocFragment ? document.createDocumentFragment() : $target;
+  const $currentTarget = options.useDocFragment ? createDocumentFragment() : $target;
 
   const sourceChildren = $source.childNodes;
 
@@ -526,18 +531,18 @@ export function morph($source, $target, options = {}){
       }
       switch($sourceElement.nodeType){
         case TEXT_NODE:
-          domFn(document.createTextNode($sourceElement.textContent));
+          domFn(createTextNode($sourceElement.textContent));
           break;
         case COMMENT_NODE:
-          domFn(document.createComment($sourceElement.textContent));
+          domFn(createComment($sourceElement.textContent));
           break;
         case ELEMENT_NODE:
           const namespaceURI = $sourceElement.namespaceURI;
           const tagName = $sourceElement.tagName;
 
           const newChild = namespaceURI === DEFAULT_NAMESPACE_URI
-              ? document.createElement(tagName.toLowerCase())
-              : document.createElementNS(namespaceURI, tagName.toLowerCase());
+              ? createElement(tagName.toLowerCase())
+              : createElementNS(namespaceURI, tagName.toLowerCase());
 
 
           if(!newChild[config.preventChildRenderingProp]){
@@ -602,7 +607,7 @@ export function html(chunks = [], ...values){
   }
 
 
-  function renderFn(target = document.createDocumentFragment(), result){
+  function renderFn(target = createDocumentFragment(), result){
     if(result && result.templateId === templateId){
       return result(values);
     } else {
