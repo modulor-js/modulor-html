@@ -19,5 +19,8 @@ jobs:
       name: "Test production build"
       script: npm run test:build
     - stage: test
+      name: "Test ssr"
+      script: npm run test:ssr
+    - stage: test
       name: "Benchmark"
       script: npm run benchmark
