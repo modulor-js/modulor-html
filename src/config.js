@@ -1,3 +1,5 @@
+import { isDefined } from './helpers';
+
 export const config = {};
 
 configure({
@@ -42,7 +44,7 @@ export const parseHTML = (markup) => config.parse(markup);
 export const getDocument = () => config.document;
 
 export const createElement = (tagName, namespaceURI) => {
-  return namespaceURI && namespaceURI === getDocument().body.namespaceURI
+  return !isDefined(namespaceURI) || namespaceURI === getDocument().body.namespaceURI
       ? getDocument().createElement(tagName)
       : getDocument().createElementNS(namespaceURI, tagName);
 };
