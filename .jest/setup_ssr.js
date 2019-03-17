@@ -1,28 +1,27 @@
-import jsdom from 'jsdom';
+import { JSDOM } from 'jsdom';
 import installCE from 'web-components-polyfill';
 import { configure } from '@modulor-js/html';
 
 
-const { JSDOM } = jsdom;
-const dom = new JSDOM(`<!DOCTYPE html>
-  <div id="container"></div>
-`);
+const { window } = new JSDOM();
+const { document, DocumentFragment, HTMLElement, Element, Node, DOMParser } = window;
 
-installCE(Object.assign(dom.window, {
-  'Object': global.Object,
-  'Math': global.Math,
-  'Promise': global.Promise,
-}), 'force');
+const windowContainer = {
+  window, document,
+  DocumentFragment, HTMLElement, Element, Node, DOMParser,
+  Object, Promise, Math,
+};
+
+installCE(windowContainer, 'force');
 
 configure({
-  document: dom.window.document,
-  Node: dom.window.Node,
-  parser: new dom.window.DOMParser(),
+  document: windowContainer.document,
+  Node: windowContainer.Node,
+  parser: new windowContainer.DOMParser(),
 });
 
 
-global.document = dom.window.document;
-global.DocumentFragment = dom.window.DocumentFragment;
-global.HTMLElement = dom.window.HTMLElement;
-global.customElements = dom.window.customElements;
+['document', 'DocumentFragment', 'HTMLElement', 'customElements'].forEach((key) => {
+  global[key] = windowContainer[key];
+});
 
