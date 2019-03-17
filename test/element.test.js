@@ -1,4 +1,4 @@
-import 'document-register-element';
+import 'web-components-polyfill';
 
 import { html, render } from '@modulor-js/html';
 import { ModulorElement, createElement } from '@modulor-js/html/element';

@@ -1,4 +1,4 @@
-import 'document-register-element';
+import 'web-components-polyfill';
 
 import { html, render, NodesRange } from '@modulor-js/html';
 import { r, until, unsafeHtml, asyncAppend, asyncReplace } from '@modulor-js/html/directives';
