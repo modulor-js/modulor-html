@@ -1,9 +1,11 @@
 import {
-  parseHTML, isNode,
-  configure, config,
-  matchModulorChunks, hasModulorChunks, buildChunk,
-  createElement, createElementNS, createTextNode, createComment, createDocumentFragment,
+  matchModulorChunks, hasModulorChunks, buildChunk, config, configure,
 } from './config';
+
+import {
+  parseHTML, isNode,
+  createElement, createElementNS, createTextNode, createComment, createDocumentFragment,
+} from './dom_helpers';
 
 import { NodesRange } from './range';
 import {

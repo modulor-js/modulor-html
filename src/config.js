@@ -1,5 +1,3 @@
-import { isDefined } from './helpers';
-
 export const config = {};
 
 configure({
@@ -37,18 +35,3 @@ export function configure(values){
 export const matchModulorChunks = (value) => config.matchChunkRegex.exec(value);
 export const hasModulorChunks = (value) => config.findChunksRegex.test(value);
 export const buildChunk = (chunkNumber) => `${config.prefix}${chunkNumber}${config.postfix}`;
-
-export const isNode = (value) => value instanceof config.Node;
-
-export const parseHTML = (markup) => config.parse(markup);
-export const getDocument = () => config.document;
-
-export const createElement = (tagName, namespaceURI) => {
-  return !isDefined(namespaceURI) || namespaceURI === getDocument().body.namespaceURI
-      ? getDocument().createElement(tagName)
-      : getDocument().createElementNS(namespaceURI, tagName);
-};
-
-export const createTextNode = (content) => getDocument().createTextNode(content);
-export const createComment = (content) => getDocument().createComment(content);
-export const createDocumentFragment = () => getDocument().createDocumentFragment();

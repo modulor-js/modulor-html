@@ -1,4 +1,4 @@
-import { createTextNode, createDocumentFragment } from './config';
+import { createTextNode, createDocumentFragment } from './dom_helpers';
 
 
 export function NodesRange(startNode = createTextNode(''), stopNode = createTextNode('')){
