@@ -1,4 +1,4 @@
-const baseConfig = require('./jest.config');
+const baseConfig = require('./config');
 
 module.exports = Object.assign({}, baseConfig, {
   moduleNameMapper: Object.assign({}, baseConfig.moduleNameMapper, {
