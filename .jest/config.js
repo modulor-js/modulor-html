@@ -1,5 +1,4 @@
 module.exports = {
-  rootDir: '../',
   testURL: 'http://localhost',
   moduleNameMapper: {
     '^web-components-polyfill$': 'document-register-element',
