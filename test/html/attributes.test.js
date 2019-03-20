@@ -1,6 +1,9 @@
 import {
-  html, render, r, createHtml, copyAttributes, processNode, configure,
+  html, render, configure,
 } from '../../src/html';
+import { copyAttributes } from '../../src/morph';
+
+import { processNode } from '../../src/parser';
 
 configure({
   prefix: '{modulor_html_chunk:',

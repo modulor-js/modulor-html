@@ -3,7 +3,6 @@ import { config } from './config';
 
 export const isNode = (value) => value instanceof config.Node;
 
-export const parseHTML = (markup) => config.parse(markup);
 export const getDocument = () => config.document;
 
 export const createElement = (tagName, namespaceURI) => {

@@ -805,6 +805,22 @@ describe('dynamic tags', () => {
   describe('function value', () => {
     describe('props handling', () => {
 
+      it('handles static attributes', () => {
+        const $container = document.createElement('div');
+        const Component = jest.fn();
+
+        const tpl = () => html`
+          <${Component} foo="xxx" bar="123"/>
+        `;
+
+        render(tpl(), $container);
+        expect(Component).toHaveBeenCalledWith({
+          foo: 'xxx',
+          bar: '123',
+          children: expect.any(Function)
+        });
+      });
+
       const $container = document.createElement('div');
       const Component = jest.fn();
 

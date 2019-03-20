@@ -1,6 +1,5 @@
-import {
-  html, prepareLiterals, replaceTokens, preprocess, configure,
-} from '../../src/html';
+import { html, configure, } from '../../src/html';
+import { prepareLiterals, preprocess, processNode, replaceTokens } from '../../src/parser';
 
 configure({
   prefix: '{modulor_html_chunk:',
@@ -301,6 +300,21 @@ describe('replaceDynamicTags', () => {
       expectation: `
         <x-foo attrs-data='[{\"name\":\"value\",\"value\":\"{modulor_html_chunk:0}\"}]'></x-foo>
       `
+    },
+  ]
+  testSets.forEach((testSet, index) => {
+    it(`set #${index}`, () => {
+      expect(preprocess(testSet.input)).toBe(testSet.expectation);
+    });
+  })
+});
+
+describe('attributes', () => {
+
+  const testSets = [
+    {
+      input: `<my-component target='[ref="slider"]'/>`,
+      expectation: `<my-component attrs-data='[{\"name\":\"target\",\"value\":\"[ref=\\\"slider\\\"]\"}]'></my-component>`
     },
   ]
   testSets.forEach((testSet, index) => {
