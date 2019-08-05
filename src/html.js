@@ -415,7 +415,7 @@ const chunkProcessingFunctions = {
     range.appendChild(value);
     return (value) => {
       if(range.childNodes.length > 1){
-        range.childNodes.slice(1).forEach(node => range.removeChild(node));
+        Array.prototype.slice.call(range.childNodes, 1).forEach(node => range.removeChild(node));
       }
       range.replaceChild(value, range.childNodes[0]);
     }

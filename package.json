@@ -1,6 +1,6 @@
 {
   "name": "@modulor-js/html",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Template engine based on tagged template literals",
   "main": "index.js",
   "directories": {
@@ -41,7 +41,7 @@
     "jest": "^22.1.4",
     "lit-html": "^0.8.0",
     "modulor-storybook": "github:modulor-js/modulor-storybook",
-    "parcel-bundler": "^1.7.0",
+    "parcel-bundler": "^1.12.3",
     "rollup": "^0.55.5",
     "rollup-plugin-babel": "^3.0.3",
     "rollup-plugin-uglify": "^3.0.0"
