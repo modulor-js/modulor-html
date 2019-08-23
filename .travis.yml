@@ -1,6 +1,6 @@
 language: node_js
 node_js:
-  - stable
+  - "11.10.1"
 
 
 jobs:
@@ -18,6 +18,9 @@ jobs:
     - stage: test
       name: "Test production build"
       script: npm run test:build
+    - stage: test
+      name: "Test ssr"
+      script: npm run test:ssr
     - stage: test
       name: "Benchmark"
       script: npm run benchmark

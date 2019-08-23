@@ -5,7 +5,7 @@ export function bench(fn, times){
   let startTime = new Date;
   let runs = 0;
   do {
-    fn();
+    fn(runs);
     runs++;
     totalTime = new Date - startTime;
   } while (totalTime < 1000);

@@ -1,6 +1,6 @@
 import 'web-components-polyfill';
 
-import { html, render, stopNode, Template, containersMap } from '@modulor-js/html';
+import { html, render, stopNode } from '@modulor-js/html';
 import { r } from '@modulor-js/html/directives';
 
 
@@ -805,6 +805,22 @@ describe('dynamic tags', () => {
   describe('function value', () => {
     describe('props handling', () => {
 
+      it('handles static attributes', () => {
+        const $container = document.createElement('div');
+        const Component = jest.fn();
+
+        const tpl = () => html`
+          <${Component} foo="xxx" bar="123"/>
+        `;
+
+        render(tpl(), $container);
+        expect(Component).toHaveBeenCalledWith({
+          foo: 'xxx',
+          bar: '123',
+          children: expect.any(Function)
+        });
+      });
+
       const $container = document.createElement('div');
       const Component = jest.fn();
 
@@ -1095,7 +1111,6 @@ describe('dynamic tags', () => {
           
         `);
 
-
         const values2 = { values: ['quux', 'zzz'] };
 
         render(tpl(values2), $container);
@@ -1181,6 +1196,155 @@ describe('dynamic tags', () => {
         `);
       });
 
+    });
+
+    //@TODO: extract this block to separate file, make more tests on each topic
+    describe('object attributes', () => {
+      it('basic', () => {
+        const $container = document.createElement('div');
+
+        const ComponentA = ({ children, ...rest }) => html`
+          <div id="component-a" ${rest} />
+        `;
+
+        const ComponentB = ({ children, ...rest }) => html`
+          <${ComponentA} ${rest} />
+        `;
+
+        const tpl = (scope) => html`
+          <${ComponentB} ${scope}/>
+        `;
+
+
+        const values1 = { value: 'foo' };
+
+        render(tpl(values1), $container);
+        expect($container.innerHTML).toBe(`<div id="component-a" value="foo"></div>
+        
+        
+        `);
+
+        const values2 = { value: 'bar', test: 1 };
+
+        render(tpl(values2), $container);
+        expect($container.innerHTML).toBe(`<div id="component-a" value="bar" test="1"></div>
+        
+        
+        `);
+
+        const values3 = { };
+
+        render(tpl(values3), $container);
+        expect($container.innerHTML).toBe(`<div id="component-a"></div>
+        
+        
+        `);
+      });
+
+      it('functions props', () => {
+        const $container = document.createElement('div');
+
+        const ComponentA = jest.fn((props) => html``);
+
+        const ComponentB = jest.fn(({ children, className, selected, bla, ...rest }) => html`
+          <${ComponentA} ${rest} ${selected} class="additional ${className}">
+            <i>${bla}</i>
+          </${ComponentA}>
+        `);
+
+        const tpl = ({ foo, bla, className, ...rest }) => html`
+          <${ComponentB} ${rest} bla="${bla}" foo="${foo}" checked class="ok ${className}"/>
+        `;
+
+
+        const values1 = { foo: 'bar', value: 'foo', bla: 12, className: 'foo', selected: 'selected' };
+        render(tpl(values1), $container);
+
+        expect(ComponentB).toHaveBeenCalledWith({
+          bla: 12,
+          className: 'ok foo',
+          foo: 'bar',
+          selected: 'selected',
+          value: 'foo',
+          checked: true,
+          children: expect.any(Function)
+        });
+
+        expect(ComponentA).toHaveBeenCalledWith({
+          checked: true,
+          className: 'additional ok foo',
+          foo: 'bar',
+          selected: true,
+          value: 'foo',
+          children: expect.any(Function)
+        });
+
+        const values2 = { foo: true, value: 'bzz', bla: 12 };
+        render(tpl(values2), $container);
+
+        expect(ComponentB).toHaveBeenCalledWith({
+          bla: 12,
+          className: 'ok',
+          foo: true,
+          value: 'bzz',
+          checked: true,
+          children: expect.any(Function)
+        });
+
+        expect(ComponentA).toHaveBeenCalledWith({
+          checked: true,
+          className: 'additional ok',
+          foo: true,
+          value: 'bzz',
+          children: expect.any(Function)
+        });
+      });
+
+      it('complex', () => {
+        const $container = document.createElement('div');
+
+        const ComponentA = ({ children, ...rest }) => html`
+          <input ${rest}>
+          ${children}
+        `;
+
+        const ComponentB = ({ children, foo, bla, ...rest }) => html`
+          <${ComponentA} ${rest}>
+            <i>${bla}</i>
+          </${ComponentA}>
+          <span foo="concated-${foo}" />
+        `;
+
+        const tpl = ({ foo, ...rest }) => html`
+          <${ComponentB} ${rest} bla="12" foo="${foo}" checked class="ok"/>
+        `;
+
+
+        const values1 = { foo: 'bar', value: 'foo' };
+        render(tpl(values1), $container);
+        expect($container.innerHTML).toBe(`<input class="ok" checked="true">
+          
+            <i>12</i>
+          
+        
+          <span foo="concated-bar"></span>
+        
+        `);
+        expect($container.querySelector('input').value).toBe('foo');
+
+
+        const values2 = { foo: 'bar', value: 'test', quux: 'ok' };
+        render(tpl(values2), $container);
+        expect($container.innerHTML).toBe(`<input class="ok" checked="true" quux="ok">
+          
+            <i>12</i>
+          
+        
+          <span foo="concated-bar"></span>
+        
+        `);
+        expect($container.querySelector('input').value).toBe('test');
+      });
     });
 
   });

@@ -1,4 +1,7 @@
-export function NodesRange(startNode = document.createTextNode(''), stopNode = document.createTextNode('')){
+import { createTextNode, createDocumentFragment } from './dom_helpers';
+
+
+export function NodesRange(startNode = createTextNode(''), stopNode = createTextNode('')){
 
   //@TODO: should be better here
   this.childNodes = [];
@@ -36,7 +39,7 @@ NodesRange.prototype.replaceChild = function($newElement, $oldElement){
 };
 
 NodesRange.prototype.extractContents = function(){
-  const $fragment = document.createDocumentFragment();
+  const $fragment = createDocumentFragment();
   $fragment.appendChild(this.startNode);
   this.childNodes.reduce(($fragment, node) => {
     $fragment.appendChild(node);
