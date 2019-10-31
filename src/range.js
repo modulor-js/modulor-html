@@ -23,9 +23,9 @@ export function NodesRange(startNode = createTextNode(''), stopNode = createText
   return this;
 }
 
-NodesRange.prototype.appendChild = function($el){
-  this.stopNode.parentNode.insertBefore($el, this.stopNode);
-  this.update();
+NodesRange.prototype.appendChild = function($el){ 
+  this.stopNode.parentNode && this.stopNode.parentNode.insertBefore($el, this.stopNode); 
+  this.update(); 
 };
 
 NodesRange.prototype.removeChild = function($el){
