@@ -40,7 +40,7 @@
     "custom-elements-jest": "github:nogizhopaboroda/custom-elements",
     "document-register-element": "^1.7.0",
     "jest": "^24.4.0",
-    "jsdom": "^14.0.0",
+    "jsdom": "^16.5.0",
     "lighterhtml": "^0.9.2",
     "lit-html": "^1.0.0",
     "modulor-storybook": "github:modulor-js/modulor-storybook",
